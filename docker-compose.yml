@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: orchestrator
+      POSTGRES_DB: agentplatform
     ports:
       - "5432:5432"
     volumes:
@@ -17,6 +17,41 @@ services:
     ports:
       - "6379:6379"
 
+  bifrost:
+    image: maximhq/bifrost:latest
+    ports:
+      - "8080:8080"
+    environment:
+      APP_HOST: "0.0.0.0"
+      APP_PORT: "8080"
+      LOG_LEVEL: "info"
+      LOG_STYLE: "json"
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+    volumes:
+      - ./bifrost/data:/app/data
+      - ./bifrost/config.json:/app/data/config.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  agents:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    ports:
+      - "8001:8001"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - AGENTS_BIFROST_URL=http://bifrost:8080/v1
+    depends_on:
+      - bifrost
+      - redis
+
   backend:
     build:
       context: .
@@ -26,11 +61,13 @@ services:
     volumes:
       - .:/app
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/orchestrator
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/agentplatform
       - REDIS_URL=redis://redis:6379
+      - AGENTS_API_URL=http://agents:8001
     depends_on:
       - db
       - redis
+      - agents
     command: bash -c "alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
 
 volumes:

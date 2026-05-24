@@ -1,50 +1,56 @@
-import numpy as np
+import httpx
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models import Workflow
-import httpx
 from backend.config import settings
+import logging
 
-async def get_embedding(text: str) -> list[float]:
-    url = "https://api.openai.com/v1/embeddings"
-    headers = {
-        "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "input": text,
-        "model": settings.EMBEDDING_MODEL
-    }
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        return response.json()["data"][0]["embedding"]
-
-def cosine_similarity(a: list[float], b: list[float]) -> float:
-    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+logger = logging.getLogger(__name__)
 
 async def route_message(db: AsyncSession, text: str, channel: str) -> Workflow | None:
-    embedding = await get_embedding(text)
-    
+    # 1. Fetch all active workflows that support the channel
     result = await db.execute(select(Workflow).where(Workflow.is_active == True))
-    workflows = result.scalars().all()
+    all_workflows = result.scalars().all()
     
-    best_workflow = None
-    highest_score = -1.0
+    workflows = [wf for wf in all_workflows if wf.channels and channel in wf.channels]
     
-    for wf in workflows:
-        if channel not in wf.channels:
-            continue
+    if not workflows:
+        return None
         
-        if wf.description_embedding is None:
-            continue
-            
-        score = cosine_similarity(embedding, wf.description_embedding)
-        if score > highest_score:
-            highest_score = score
-            best_workflow = wf
-            
-    if highest_score >= settings.SEMANTIC_SIMILARITY_THRESHOLD:
-        return best_workflow
+    if len(workflows) == 1:
+        return workflows[0]
+        
+    # 2. Build HTTP Request to Agents Server
+    workflow_payload = [
+        {"id": str(wf.id), "name": wf.name, "description": wf.description or ""} 
+        for wf in workflows
+    ]
     
-    return None
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{settings.AGENTS_API_URL}/semantic_route",
+                json={
+                    "query": text,
+                    "workflows": workflow_payload
+                },
+                timeout=10.0
+            )
+            response.raise_for_status()
+            data = response.json()
+            output_id = data.get("workflow_id")
+            
+            if output_id == "NONE" or not output_id:
+                return None
+                
+            # Find and return the matched workflow
+            for wf in workflows:
+                if str(wf.id) == output_id:
+                    return wf
+                    
+            logger.warning(f"Semantic router returned unrecognized workflow ID: {output_id}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Failed to contact Agents Semantic Router: {e}")
+        return None

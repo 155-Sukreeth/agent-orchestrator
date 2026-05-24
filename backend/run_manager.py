@@ -1,53 +1,56 @@
-import json
-from backend.database import AsyncSessionLocal
-from backend.models import Run, Workflow
-from agents.compiler.compiler import compile_graph
+import logging
+import httpx
+from sqlalchemy.ext.asyncio import AsyncSession
+from backend.models import Run, RunStatus
 from backend.config import settings
-from backend.adaptors.registry import get_adaptor
-import redis.asyncio as redis
 
-async def execute_run(run_id: int):
-    async with AsyncSessionLocal() as db:
-        run = await db.get(Run, run_id)
-        if not run:
-            return
-        
-        workflow = await db.get(Workflow, run.workflow_id)
-        if not workflow or not workflow.graph_definition:
-            run.status = "failed"
-            await db.commit()
-            return
+logger = logging.getLogger(__name__)
 
-        state = {
-            "messages": [{"role": "user", "content": run.input_text}],
-            "input": run.input_text,
-            "output": "",
-            "channel": "telegram",
-            "thread_id": run.thread_id,
-            "metadata": {},
-            "router_decision": ""
-        }
-        
-        graph = compile_graph(workflow.graph_definition)
-        redis_client = redis.from_url(settings.REDIS_URL)
-        channel = f"run:{run.id}:logs"
-        
-        try:
-            async for s in graph.astream(state, stream_mode="values"):
-                await redis_client.publish(channel, json.dumps({"event": "update"}))
-                state = s
+async def start_run(db: AsyncSession, workflow_id: str, input_data: str) -> str:
+    """
+    Creates a run record and delegates execution to the Agents Microservice via HTTP POST.
+    """
+    from sqlalchemy.future import select
+    from backend.models import Workflow
+    
+    # Verify workflow exists
+    result = await db.execute(select(Workflow).where(Workflow.id == workflow_id))
+    workflow = result.scalar_one_or_none()
+    if not workflow:
+        raise ValueError(f"Workflow {workflow_id} not found")
+
+    # Create run record
+    run = Run(
+        workflow_id=workflow_id,
+        status=RunStatus.PENDING,
+        input_data=input_data
+    )
+    db.add(run)
+    await db.commit()
+    await db.refresh(run)
+    run_id_str = str(run.id)
+
+    # Make HTTP request to Agents Microservice to trigger execution
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{settings.AGENTS_API_URL}/compile_and_run",
+                json={
+                    "run_id": run_id_str,
+                    "workflow_config": workflow.config,
+                    "input_data": input_data
+                },
+                timeout=5.0
+            )
+            response.raise_for_status()
             
-            final_output = state.get("output", "Execution completed.")
-            run.output_text = final_output
-            run.status = "completed"
+        run.status = RunStatus.RUNNING
+        await db.commit()
             
-            adaptor = get_adaptor("telegram")
-            if adaptor:
-                await adaptor.send_message(run.sender_id, run.thread_id, final_output)
-                
-        except Exception as e:
-            run.status = "failed"
-            await redis_client.publish(channel, json.dumps({"event": "error", "error": str(e)}))
-        finally:
-            await db.commit()
-            await redis_client.aclose()
+    except Exception as e:
+        logger.error(f"Failed to start workflow execution on Agents service: {e}")
+        run.status = RunStatus.FAILED
+        await db.commit()
+        raise e
+        
+    return run_id_str
