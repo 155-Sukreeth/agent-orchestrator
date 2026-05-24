@@ -1,13 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from backend.models import Workflow
-from backend.clients.agents_client import agents_client
+from backend.clients.agents_client import AgentsClient
 import logging
 
 logger = logging.getLogger(__name__)
 
 class SemanticRouterService:
-    async def route_message(self, db: AsyncSession, message: str, channel: str) -> Workflow | None:
+    async def route_message(self, db: AsyncSession, message: str, channel: str, agents_client: AgentsClient) -> Workflow | None:
         """
         Uses the Agents client to run semantic routing logic over active workflows.
         """

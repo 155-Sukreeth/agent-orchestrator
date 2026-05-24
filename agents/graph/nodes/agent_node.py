@@ -1,4 +1,4 @@
-from agents.compiler.state import AgentState
+from agents.graph.state import AgentState
 from agents.clients.bifrost_client import bifrost_client
 from agents.config.settings import agent_settings
 
@@ -11,34 +11,42 @@ def build_messages(state: AgentState, system_prompt: str) -> list[dict]:
         ]
     return messages
 
-def build_agent_node(config: dict):
-    provider = config.get("provider", agent_settings.AGENTS_DEFAULT_PROVIDER)
-    model = config.get("model", agent_settings.AGENTS_DEFAULT_MODEL)
-    client = bifrost_client.client
-    model_name = bifrost_client.resolve_model(provider, model)
+from agents.config.llm_params import LLMConfig
 
-    # Optional fallback chain from node config
-    fallback_configs = config.get("fallbacks", [])
-    fallbacks = [f"{f['provider']}/{f['model']}" for f in fallback_configs]
-    
+def build_agent_node(config: dict):
+    llm_config = LLMConfig(**config.get("llm_params", {}))
+    client = bifrost_client.client
+
     system_prompt = config.get("system_prompt", "You are a helpful assistant.")
 
     async def agent_node(state: AgentState) -> dict:
         payload = {
-            "model": model_name,
+            "model": llm_config.primary_model,
             "messages": build_messages(state, system_prompt),
-            "max_tokens": 1000,
+            "max_tokens": llm_config.get_max_tokens(),
+            "temperature": llm_config.temperature,
         }
-        if fallbacks:
-            # We use extra_body to pass custom parameters like fallbacks to the gateway via the OpenAI SDK
-            payload["extra_body"] = {"fallbacks": fallbacks}
-
-        response = await client.chat.completions.create(**payload)
         
-        # Check actual provider used (if gateway returns it)
-        actual_provider = provider
+        extra_body = {}
+        if llm_config.secondary_models:
+            extra_body["fallbacks"] = llm_config.secondary_models
+        if llm_config.enable_prompt_caching:
+            extra_body["enable_prompt_caching"] = True
+            
+        if extra_body:
+            payload["extra_body"] = extra_body
+            
+        if llm_config.response_format:
+            payload["response_format"] = llm_config.response_format
+            
+        if llm_config.tools:
+            payload["tools"] = llm_config.tools
+
+        response = await client.chat.completions.create(**payload, timeout=llm_config.timeout)
+        
+        actual_provider = "unknown"
         if hasattr(response, "model_extra") and response.model_extra:
-            actual_provider = response.model_extra.get("provider", provider)
+            actual_provider = response.model_extra.get("provider", "unknown")
 
         return {
             "messages": [response.choices[0].message],

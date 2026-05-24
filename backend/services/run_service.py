@@ -1,13 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.repositories.run_repository import run_repository
 from backend.repositories.workflow_repository import workflow_repository
-from backend.clients.agents_client import agents_client
+from backend.clients.agents_client import AgentsClient
 import logging
 
 logger = logging.getLogger(__name__)
 
 class RunService:
-    async def start_run(self, db: AsyncSession, workflow_id: int, input_data: str, sender_id: str = None, thread_id: str = None) -> str:
+    async def start_run(self, db: AsyncSession, workflow_id: int, input_data: str, agents_client: AgentsClient, sender_id: str = None, thread_id: str = None) -> str:
         # Verify workflow exists
         workflow = await workflow_repository.get_by_id(db, workflow_id)
         if not workflow:

@@ -32,8 +32,8 @@ services:
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
       GROQ_API_KEY: ${GROQ_API_KEY}
     volumes:
-      - ./bifrost/data:/app/data
-      - ./bifrost/config.json:/app/data/config.json
+      - ./ai-gateway/data:/app/data
+      - ./ai-gateway/config.json:/app/data/config.json
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s

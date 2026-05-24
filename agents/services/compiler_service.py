@@ -1,5 +1,5 @@
 import logging
-from agents.compiler.compiler import compile_graph
+from agents.graph.builder import compile_graph
 from agents.clients.redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
