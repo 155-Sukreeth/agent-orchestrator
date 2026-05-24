@@ -1,0 +1,9 @@
+node_modules/
+__pycache__/
+*.pyc
+.env
+bifrost/config.db
+bifrost/logs.db
+bifrost/data/
+*.db
+.pytest_cache/
