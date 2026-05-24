@@ -1,0 +1,13 @@
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List
+
+from backend.database import get_db
+from backend.services.run_service import run_service
+
+router = APIRouter(prefix="/runs", tags=["runs"])
+
+@router.post("/")
+async def start_run(workflow_id: int, input_data: str, db: AsyncSession = Depends(get_db)):
+    run_id = await run_service.start_run(db, workflow_id, input_data)
+    return {"run_id": run_id}

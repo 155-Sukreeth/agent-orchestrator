@@ -4,11 +4,11 @@ from sqlalchemy import text
 from backend.database import engine, Base
 import backend.models
 
-from backend.api.webhooks import router as webhooks_router
-from backend.api.agents import router as agents_router
-from backend.api.workflows import router as workflows_router
-from backend.api.runs import router as runs_router
-from backend.api.ws import router as ws_router
+from backend.routers.webhooks import router as webhooks_router
+from backend.routers.agents import router as agents_router
+from backend.routers.workflows import router as workflows_router
+from backend.routers.runs import router as runs_router
+from backend.routers.ws import router as ws_router
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):

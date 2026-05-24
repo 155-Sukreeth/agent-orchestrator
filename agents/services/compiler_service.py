@@ -1,0 +1,39 @@
+import logging
+from agents.compiler.compiler import compile_graph
+from agents.clients.redis_client import get_redis_client
+
+logger = logging.getLogger(__name__)
+
+class CompilerService:
+    async def execute_graph_and_log(self, run_id: str, workflow_config: dict, input_data: str):
+        logger.info(f"Starting execution for run {run_id}")
+        redis_client = get_redis_client()
+        
+        try:
+            await redis_client.publish_log(run_id, "INFO", "Compiling workflow graph...")
+            graph = await compile_graph(workflow_config)
+            
+            initial_state = {"input": input_data, "messages": []}
+            
+            await redis_client.publish_log(run_id, "INFO", "Executing workflow...")
+            
+            async for output in graph.astream(initial_state):
+                for node_name, state_update in output.items():
+                    await redis_client.publish_log(
+                        run_id, 
+                        "INFO", 
+                        f"Node '{node_name}' executed", 
+                        {"state": str(state_update)}
+                    )
+                    
+            await redis_client.publish_log(run_id, "INFO", "Workflow execution completed successfully")
+            await redis_client.set_status(run_id, "completed")
+            
+        except Exception as e:
+            logger.error(f"Execution failed for {run_id}: {e}")
+            await redis_client.publish_log(run_id, "ERROR", f"Workflow execution failed: {str(e)}")
+            await redis_client.set_status(run_id, "failed")
+        finally:
+            await redis_client.close()
+
+compiler_service = CompilerService()
