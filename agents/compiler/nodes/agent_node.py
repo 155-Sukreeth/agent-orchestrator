@@ -11,7 +11,7 @@ def build_messages(state: AgentState, system_prompt: str) -> list[dict]:
         ]
     return messages
 
-async def build_agent_node(config: dict):
+def build_agent_node(config: dict):
     provider = config.get("provider", agent_settings.AGENTS_DEFAULT_PROVIDER)
     model = config.get("model", agent_settings.AGENTS_DEFAULT_MODEL)
     primary_model = resolve_model(provider, model)

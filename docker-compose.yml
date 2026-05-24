@@ -45,6 +45,8 @@ services:
       dockerfile: Dockerfile.agent
     ports:
       - "8001:8001"
+    volumes:
+      - .:/app
     environment:
       - REDIS_URL=redis://redis:6379
       - AGENTS_BIFROST_URL=http://bifrost:8080/v1

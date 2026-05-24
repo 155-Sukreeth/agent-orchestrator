@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, END
 from agents.compiler.state import AgentState
-from agents.compiler.nodes.agent_node import agent_node
+from agents.compiler.nodes.agent_node import build_agent_node
 from agents.compiler.nodes.router_node import router_node
 
 def compile_graph(graph_definition: dict):
@@ -11,13 +11,19 @@ def compile_graph(graph_definition: dict):
     entry_node = graph_definition.get("entry_node")
     
     def make_node(node_def):
-        async def node_func(state: AgentState):
-            if node_def["type"] == "agent":
-                return await agent_node(state, node_def.get("config", {}))
-            elif node_def["type"] == "router":
+        if node_def["type"] == "agent":
+            agent_func = build_agent_node(node_def.get("config", {}))
+            async def node_func(state: AgentState):
+                return await agent_func(state)
+            return node_func
+        elif node_def["type"] == "router":
+            async def router_func(state: AgentState):
                 return await router_node(state, node_def.get("config", {}))
+            return router_func
+            
+        async def fallback_func(state: AgentState):
             return {}
-        return node_func
+        return fallback_func
 
     for node in nodes:
         workflow.add_node(node["id"], make_node(node))

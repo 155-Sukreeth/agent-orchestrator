@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+redis
+httpx
+openai
+langgraph
+langchain-core
+jinja2

@@ -8,9 +8,5 @@ pydantic
 pydantic-settings
 redis
 httpx
-openai
-python-telegram-bot
-langgraph
-langchain-core
-jinja2
 python-multipart
+python-telegram-bot

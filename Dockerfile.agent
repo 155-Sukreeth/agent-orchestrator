@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY agents/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy agents package

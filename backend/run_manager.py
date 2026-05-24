@@ -1,15 +1,12 @@
 import logging
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend.models import Run, RunStatus
+from backend.models import Run
 from backend.config import settings
 
 logger = logging.getLogger(__name__)
 
-async def start_run(db: AsyncSession, workflow_id: str, input_data: str) -> str:
-    """
-    Creates a run record and delegates execution to the Agents Microservice via HTTP POST.
-    """
+async def start_run(db: AsyncSession, workflow_id: int, input_data: str, sender_id: str = None, thread_id: str = None) -> str:
     from sqlalchemy.future import select
     from backend.models import Workflow
     
@@ -22,8 +19,10 @@ async def start_run(db: AsyncSession, workflow_id: str, input_data: str) -> str:
     # Create run record
     run = Run(
         workflow_id=workflow_id,
-        status=RunStatus.PENDING,
-        input_data=input_data
+        status="pending",
+        input_text=input_data,
+        sender_id=sender_id,
+        thread_id=thread_id
     )
     db.add(run)
     await db.commit()
@@ -37,19 +36,19 @@ async def start_run(db: AsyncSession, workflow_id: str, input_data: str) -> str:
                 f"{settings.AGENTS_API_URL}/compile_and_run",
                 json={
                     "run_id": run_id_str,
-                    "workflow_config": workflow.config,
+                    "workflow_config": workflow.graph_definition,
                     "input_data": input_data
                 },
                 timeout=5.0
             )
             response.raise_for_status()
             
-        run.status = RunStatus.RUNNING
+        run.status = "running"
         await db.commit()
             
     except Exception as e:
         logger.error(f"Failed to start workflow execution on Agents service: {e}")
-        run.status = RunStatus.FAILED
+        run.status = "failed"
         await db.commit()
         raise e
         
