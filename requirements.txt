@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+sqlalchemy
+asyncpg
+pgvector
+alembic
+pydantic
+pydantic-settings
+redis
+httpx
+openai
+python-telegram-bot
+langgraph
+langchain-core
+jinja2
+python-multipart

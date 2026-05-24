@@ -1,0 +1,31 @@
+import contextlib
+from fastapi import FastAPI
+from sqlalchemy import text
+from backend.database import engine, Base
+import backend.models
+
+from backend.api.webhooks import router as webhooks_router
+from backend.api.agents import router as agents_router
+from backend.api.workflows import router as workflows_router
+from backend.api.runs import router as runs_router
+from backend.api.ws import router as ws_router
+
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    await engine.dispose()
+
+app = FastAPI(title="AI Agent Orchestrator", lifespan=lifespan)
+
+app.include_router(webhooks_router)
+app.include_router(agents_router)
+app.include_router(workflows_router)
+app.include_router(runs_router)
+app.include_router(ws_router)
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
