@@ -37,7 +37,7 @@
         "retry_backoff_max": 5000
       }
     },
-    "google": {
+    "gemini": {
       "keys": [
         {
           "name": "google-primary",
@@ -57,6 +57,21 @@
         {
           "name": "mistral-primary",
           "value": "env.MISTRAL_API_KEY",
+          "models": ["*"],
+          "weight": 1.0
+        }
+      ],
+      "network_config": {
+        "max_retries": 2,
+        "retry_backoff_initial": 500,
+        "retry_backoff_max": 5000
+      }
+    },
+    "groq": {
+      "keys": [
+        {
+          "name": "groq-primary",
+          "value": "env.GROQ_API_KEY",
           "models": ["*"],
           "weight": 1.0
         }

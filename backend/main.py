@@ -14,7 +14,6 @@ from backend.routers.ws import router as ws_router
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await conn.run_sync(Base.metadata.create_all)
     yield
     await engine.dispose()
 
