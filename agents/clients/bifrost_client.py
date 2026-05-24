@@ -1,5 +1,5 @@
 from openai import AsyncOpenAI
-from agents.config import agent_settings
+from agents.config.settings import agent_settings
 
 SUPPORTED_PROVIDERS = ["openai", "anthropic", "google", "mistral"]
 

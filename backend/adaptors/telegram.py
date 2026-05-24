@@ -1,6 +1,6 @@
 import httpx
 from backend.adaptors.base import BaseAdaptor
-from backend.config import settings
+from backend.config.settings import settings
 
 class TelegramAdaptor(BaseAdaptor):
     async def parse_payload(self, request_body: dict) -> dict:

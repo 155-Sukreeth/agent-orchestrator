@@ -1,6 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import redis.asyncio as redis
-from backend.config import settings
+from backend.config.settings import settings
 
 router = APIRouter(tags=["ws"])
 

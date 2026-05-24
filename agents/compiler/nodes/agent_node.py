@@ -1,6 +1,6 @@
 from agents.compiler.state import AgentState
 from agents.clients.bifrost_client import bifrost_client
-from agents.config import agent_settings
+from agents.config.settings import agent_settings
 
 def build_messages(state: AgentState, system_prompt: str) -> list[dict]:
     messages = state.get("messages", [])
