@@ -9,7 +9,7 @@ export interface StagedSource {
   config: any;
 }
 
-import { createIntegration } from '../../../api';
+import { createIntegration, crawlIntegration } from '../../api';
 
 const KnowledgeLayout: React.FC = () => {
   const [stagedSources, setStagedSources] = useState<StagedSource[]>([]);
@@ -29,12 +29,15 @@ const KnowledgeLayout: React.FC = () => {
     
     try {
       for (const source of stagedSources) {
-        await createIntegration({
+        const created = await createIntegration({
           name: source.name,
           type: source.type,
           category: 'web', // Defaulting for now
           config: source.config
         });
+        
+        // Actually trigger the sync since the button says "Proceed & Sync"
+        await crawlIntegration(created.id.toString());
       }
       setStagedSources([]);
       navigate('/knowledge/dashboard');
