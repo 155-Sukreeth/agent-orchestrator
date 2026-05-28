@@ -4,26 +4,35 @@ from knowledge_base.config.settings import settings
 
 class EmbeddingService:
     def __init__(self):
-        self.api_key = settings.huggingface_api_key
+        self.api_key = settings.google_api_key
         self.model = settings.embedding_model
-        self.base_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{self.model}"
+        # Gemini embedding endpoint
+        self.base_url = f"https://generativelanguage.googleapis.com/v1beta/{self.model}:batchEmbedContents"
 
     async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        headers = {}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+        if not self.api_key:
+            raise ValueError("Google API key is missing")
             
+        requests = [
+            {
+                "model": self.model,
+                "content": {
+                    "parts": [{"text": text}]
+                }
+            }
+            for text in texts
+        ]
+        
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                self.base_url,
-                headers=headers,
-                json={"inputs": texts},
+                f"{self.base_url}?key={self.api_key}",
+                json={"requests": requests},
                 timeout=30.0
             )
             response.raise_for_status()
             data = response.json()
             
-            # Hugging Face usually returns a list of embeddings directly
-            return data
+            # Extract embeddings from the response
+            return [emb["values"] for emb in data.get("embeddings", [])]
 
 embedding_service = EmbeddingService()
