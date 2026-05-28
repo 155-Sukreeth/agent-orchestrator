@@ -135,13 +135,24 @@ async def stream_crawl_events(integration_id: int, redis = Depends(get_redis)):
         await pubsub.subscribe(channel)
         
         try:
-            async for message in pubsub.listen():
-                if message["type"] == "message":
-                    data = message["data"]
-                    yield {"event": "message", "data": data}
-                    
-                    if '"type": "sync_complete"' in data:
-                        break
+            while True:
+                try:
+                    message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                    if message:
+                        data = message["data"]
+                        yield {"event": "message", "data": data}
+                        
+                        if '"type": "sync_complete"' in data:
+                            break
+                    else:
+                        await asyncio.sleep(0.5)
+                except Exception as e:
+                    # Ignore timeouts and continue
+                    if "Timeout" in str(type(e)):
+                        await asyncio.sleep(0.5)
+                        continue
+                    print(f"Redis pubsub error: {e}")
+                    break
         finally:
             await pubsub.unsubscribe(channel)
             await pubsub.close()
