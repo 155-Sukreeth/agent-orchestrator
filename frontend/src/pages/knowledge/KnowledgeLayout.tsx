@@ -9,8 +9,11 @@ export interface StagedSource {
   config: any;
 }
 
+import { createIntegration } from '../../../api';
+
 const KnowledgeLayout: React.FC = () => {
   const [stagedSources, setStagedSources] = useState<StagedSource[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -20,12 +23,26 @@ const KnowledgeLayout: React.FC = () => {
     setStagedSources((prev) => [...prev, source]);
   };
 
-  const handleProceed = () => {
-    // In a real app, this would hit the backend to save/sync sources
-    console.log('Syncing sources:', stagedSources);
-    // Clear staging area after proceed
-    setStagedSources([]);
-    navigate('/knowledge/dashboard');
+  const handleProceed = async () => {
+    if (stagedSources.length === 0) return;
+    setIsSyncing(true);
+    
+    try {
+      for (const source of stagedSources) {
+        await createIntegration({
+          name: source.name,
+          type: source.type,
+          category: 'web', // Defaulting for now
+          config: source.config
+        });
+      }
+      setStagedSources([]);
+      navigate('/knowledge/dashboard');
+    } catch (err) {
+      console.error("Failed to sync sources", err);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return (
@@ -90,10 +107,11 @@ const KnowledgeLayout: React.FC = () => {
             <div className="p-4 border-t border-white/5 bg-gray-950/50">
               <button
                 onClick={handleProceed}
-                className="w-full flex items-center justify-center px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors shadow-[0_0_15px_rgba(99,102,241,0.3)]"
+                disabled={isSyncing}
+                className="w-full flex items-center justify-center px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors shadow-[0_0_15px_rgba(99,102,241,0.3)] disabled:opacity-50"
               >
-                Proceed & Sync
-                <ChevronRight className="w-4 h-4 ml-1" />
+                {isSyncing ? 'Syncing...' : 'Proceed & Sync'}
+                {!isSyncing && <ChevronRight className="w-4 h-4 ml-1" />}
               </button>
             </div>
           </div>

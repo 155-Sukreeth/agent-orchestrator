@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Globe, RefreshCw, MoreVertical, FileText, Layout, Share2, UploadCloud, Cpu, Database, Github, FileBox, Zap, Trash2 } from 'lucide-react';
-import { fetchIntegrations, fetchIntegrationDocuments, crawlIntegration, deleteIntegration } from '../../../api';
+import { fetchIntegrations, fetchIntegrationDocuments, crawlIntegration, deleteIntegration } from '../../api';
 
 const getIconForType = (type: string) => {
   switch (type) {

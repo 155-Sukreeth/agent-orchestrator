@@ -10,10 +10,33 @@ import json
 
 router = APIRouter()
 
+from pydantic import BaseModel
+from typing import Dict, Any, Optional
+
+class IntegrationCreate(BaseModel):
+    name: str
+    type: str
+    category: str = "web"
+    config: Dict[str, Any] = {}
+
 @router.get("/")
 async def get_integrations(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Integration).order_by(Integration.created_at.desc()))
     return result.scalars().all()
+
+@router.post("/")
+async def create_integration(integration_in: IntegrationCreate, db: AsyncSession = Depends(get_db)):
+    db_integration = Integration(
+        name=integration_in.name,
+        type=integration_in.type,
+        category=integration_in.category,
+        config=integration_in.config,
+        status=IntegrationStatus.PENDING
+    )
+    db.add(db_integration)
+    await db.commit()
+    await db.refresh(db_integration)
+    return db_integration
 
 @router.get("/{integration_id}/documents")
 async def get_integration_documents(integration_id: int, db: AsyncSession = Depends(get_db)):

@@ -54,6 +54,16 @@ export const fetchIntegrations = async () => {
   return response.json();
 };
 
+export const createIntegration = async (integrationData: any) => {
+  const response = await fetch(`${API_URL}/api/integrations/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(integrationData)
+  });
+  if (!response.ok) throw new Error('Failed to create integration');
+  return response.json();
+};
+
 export const fetchIntegrationDocuments = async (id: string) => {
   const response = await fetch(`${API_URL}/api/integrations/${id}/documents`);
   if (!response.ok) throw new Error('Failed to fetch documents');
