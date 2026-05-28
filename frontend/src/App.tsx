@@ -8,6 +8,8 @@ import KnowledgeLayout from './pages/knowledge/KnowledgeLayout';
 import SourceCatalog from './pages/knowledge/SourceCatalog';
 import KnowledgeDashboard from './pages/knowledge/KnowledgeDashboard';
 
+import KnowledgeIndexRedirect from './pages/knowledge/KnowledgeIndexRedirect';
+
 function App() {
   return (
     <BrowserRouter>
@@ -18,7 +20,7 @@ function App() {
           <Route path="workflows/new" element={<WorkflowBuilder />} />
           <Route path="workflows/:id" element={<WorkflowBuilder />} />
           <Route path="knowledge" element={<KnowledgeLayout />}>
-            <Route index element={<Navigate to="catalog" replace />} />
+            <Route index element={<KnowledgeIndexRedirect />} />
             <Route path="catalog" element={<SourceCatalog />} />
             <Route path="dashboard" element={<KnowledgeDashboard />} />
           </Route>
