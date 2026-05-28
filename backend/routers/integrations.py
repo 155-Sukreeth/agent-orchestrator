@@ -85,7 +85,8 @@ async def simulate_crawl(integration_id: int, redis):
                 integration_id=integration_id,
                 title=page["title"],
                 url_or_path=page["url"],
-                is_active=True
+                is_active=True,
+                metadata_json={"chunks": page["chunks"]}
             )
             db.add(doc)
             await db.commit()
