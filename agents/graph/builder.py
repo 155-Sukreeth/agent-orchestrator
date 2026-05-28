@@ -2,6 +2,10 @@ from langgraph.graph import StateGraph, END
 from agents.graph.state import AgentState
 from agents.graph.nodes.agent_node import build_agent_node
 from agents.graph.nodes.router_node import router_node
+from agents.graph.nodes.user_message_node import build_user_message_node
+from agents.graph.nodes.llm_node import build_llm_node
+from agents.graph.nodes.knowledge_node import build_knowledge_node
+from agents.graph.nodes.human_pause_node import build_human_pause_node
 
 def compile_graph(graph_definition: dict):
     workflow = StateGraph(AgentState)
@@ -11,15 +15,35 @@ def compile_graph(graph_definition: dict):
     entry_node = graph_definition.get("entry_node")
     
     def make_node(node_def):
-        if node_def["type"] == "agent":
+        if node_def["type"] in ["agent", "reactAgentNode", "agentNode"]:
             agent_func = build_agent_node(node_def.get("config", {}))
             async def node_func(state: AgentState):
                 return await agent_func(state)
             return node_func
-        elif node_def["type"] == "router":
+        elif node_def["type"] in ["router", "routerNode"]:
             async def router_func(state: AgentState):
                 return await router_node(state, node_def.get("config", {}))
             return router_func
+        elif node_def["type"] == "userMessageNode":
+            user_msg_func = build_user_message_node(node_def.get("config", {}))
+            async def user_node_func(state: AgentState):
+                return await user_msg_func(state)
+            return user_node_func
+        elif node_def["type"] == "llmNode":
+            llm_func = build_llm_node(node_def.get("config", {}))
+            async def llm_node_func(state: AgentState):
+                return await llm_func(state)
+            return llm_node_func
+        elif node_def["type"] == "knowledgeNode":
+            know_func = build_knowledge_node(node_def.get("config", {}))
+            async def know_node_func(state: AgentState):
+                return await know_func(state)
+            return know_node_func
+        elif node_def["type"] == "humanPauseNode":
+            pause_func = build_human_pause_node(node_def.get("config", {}))
+            async def pause_node_func(state: AgentState):
+                return await pause_func(state)
+            return pause_node_func
             
         async def fallback_func(state: AgentState):
             return {}

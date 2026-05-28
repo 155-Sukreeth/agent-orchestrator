@@ -17,7 +17,17 @@ async def lifespan(app: FastAPI):
     yield
     await engine.dispose()
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="AI Agent Orchestrator", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # In production, restrict this to ["http://localhost:3000", "http://localhost:5173"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(webhooks_router)
 app.include_router(agents_router)

@@ -11,7 +11,7 @@ class CompilerService:
         
         try:
             await redis_client.publish_log(run_id, "INFO", "Compiling workflow graph...")
-            graph = await compile_graph(workflow_config)
+            graph = compile_graph(workflow_config)
             
             initial_state = {"input": input_data, "messages": []}
             

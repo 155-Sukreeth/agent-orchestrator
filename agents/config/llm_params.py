@@ -4,7 +4,7 @@ from agents.config.constants import ModelNames, LLMOperations, MODEL_MAX_TOKENS
 
 class LLMConfig(BaseModel):
     primary_model: str = Field(
-        default=ModelNames.GPT_4O, 
+        default=ModelNames.GEMINI_3_1_FLASH_LITE, 
         description="The primary provider/model string to use for inference via Bifrost."
     )
     secondary_models: List[str] = Field(
@@ -45,3 +45,52 @@ class LLMConfig(BaseModel):
         if self.max_output_tokens is not None:
             return self.max_output_tokens
         return MODEL_MAX_TOKENS.get(self.primary_model, 2048)
+
+class LLMParameters(BaseModel):
+    SEMANTIC_ROUTER: LLMConfig = LLMConfig(
+        primary_model=ModelNames.GEMINI_3_1_FLASH_LITE,
+        secondary_models=[
+            ModelNames.GROQ_LLAMA3_70B,
+            ModelNames.GROQ_GPT_OSS_120B
+        ],
+        operation_name=LLMOperations.ROUTING,
+        max_output_tokens=1000,
+        temperature=0.1,
+        timeout=30
+    )
+    
+    LLM_JUDGE: LLMConfig = LLMConfig(
+        primary_model=ModelNames.GEMINI_3_1_FLASH_LITE,
+        secondary_models=[
+            ModelNames.GROQ_LLAMA3_70B,
+        ],
+        operation_name=LLMOperations.LLM_JUDGE,
+        max_output_tokens=100,
+        temperature=0.0,
+        timeout=15
+    )
+
+    AGENT_DEFAULT: LLMConfig = LLMConfig(
+        primary_model=ModelNames.GEMINI_3_1_FLASH_LITE,
+        secondary_models=[
+            ModelNames.GROQ_LLAMA3_70B,
+            ModelNames.GROQ_GPT_OSS_120B
+        ],
+        operation_name=LLMOperations.GENERAL_CHAT,
+        max_output_tokens=2048,
+        temperature=0.7,
+        timeout=60
+    )
+
+    LLM_NODE_DEFAULT: LLMConfig = LLMConfig(
+        primary_model=ModelNames.GEMINI_3_1_FLASH_LITE,
+        secondary_models=[
+            ModelNames.GROQ_LLAMA3_70B,
+        ],
+        operation_name=LLMOperations.EXTRACTION,
+        max_output_tokens=1024,
+        temperature=0.2,
+        timeout=30
+    )
+
+llm_params_registry = LLMParameters()

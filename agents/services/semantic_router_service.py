@@ -2,6 +2,9 @@ import logging
 from typing import List
 from agents.clients.bifrost_client import bifrost_client
 from agents.templates import render
+from agents.config.settings import agent_settings
+
+from agents.config.llm_params import llm_params_registry
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +26,21 @@ class SemanticRouterService:
         prompt = render("semantic_router", section="full", context=context, query=query)
 
         try:
-            model_name = bifrost_client.resolve_model("openai", "gpt-4o")
+            llm_config = llm_params_registry.SEMANTIC_ROUTER
+            provider, model = llm_config.primary_model.split("/")
+            resolved_model = bifrost_client.resolve_model(provider, model)
+            
+            extra_body = {}
+            if llm_config.secondary_models:
+                extra_body["fallbacks"] = llm_config.secondary_models
+                
             response = await bifrost_client.client.chat.completions.create(
-                model=model_name,
+                model=resolved_model,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=20
+                max_tokens=llm_config.get_max_tokens(),
+                temperature=llm_config.temperature,
+                extra_body=extra_body,
+                timeout=llm_config.timeout
             )
             content = response.choices[0].message.content.strip()
             

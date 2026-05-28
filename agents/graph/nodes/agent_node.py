@@ -1,27 +1,37 @@
+import logging
 from agents.graph.state import AgentState
 from agents.clients.bifrost_client import bifrost_client
-from agents.config.settings import agent_settings
+from agents.config.llm_params import llm_params_registry
+
+logger = logging.getLogger(__name__)
 
 def build_messages(state: AgentState, system_prompt: str) -> list[dict]:
-    messages = state.get("messages", [])
-    if not messages:
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": state.get("input", "")}
-        ]
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    
+    for msg in state.get("messages", []):
+        messages.append(msg)
+        
     return messages
 
-from agents.config.llm_params import LLMConfig
-
 def build_agent_node(config: dict):
-    llm_config = LLMConfig(**config.get("llm_params", {}))
+    llm_config = llm_params_registry.AGENT_DEFAULT.model_copy(update=config.get("llm_params", {}))
     client = bifrost_client.client
-
+    
+    tools_list = config.get("tools", [])
     system_prompt = config.get("system_prompt", "You are a helpful assistant.")
 
     async def agent_node(state: AgentState) -> dict:
+        try:
+            provider, model = llm_config.primary_model.split("/")
+        except ValueError:
+            provider, model = llm_params_registry.AGENT_DEFAULT.primary_model.split("/")
+            
+        resolved_model = bifrost_client.resolve_model(provider, model)
+        
         payload = {
-            "model": llm_config.primary_model,
+            "model": resolved_model,
             "messages": build_messages(state, system_prompt),
             "max_tokens": llm_config.get_max_tokens(),
             "temperature": llm_config.temperature,
@@ -48,9 +58,14 @@ def build_agent_node(config: dict):
         if hasattr(response, "model_extra") and response.model_extra:
             actual_provider = response.model_extra.get("provider", "unknown")
 
+        msg_obj = response.choices[0].message
+        msg_dict = {"role": "assistant", "content": msg_obj.content or ""}
+        if getattr(msg_obj, "tool_calls", None):
+            msg_dict["tool_calls"] = [tc.model_dump() for tc in msg_obj.tool_calls]
+
         return {
-            "messages": [response.choices[0].message],
-            "output": response.choices[0].message.content,
+            "messages": [msg_dict],
+            "output": msg_obj.content,
             "metadata": {**state.get("metadata", {}), "provider_used": actual_provider}
         }
 

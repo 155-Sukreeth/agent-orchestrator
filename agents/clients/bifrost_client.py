@@ -1,7 +1,7 @@
 from openai import AsyncOpenAI
 from agents.config.settings import agent_settings
 
-SUPPORTED_PROVIDERS = ["openai", "anthropic", "google", "mistral"]
+SUPPORTED_PROVIDERS = ["openai", "anthropic", "google", "mistral", "gemini", "groq"]
 
 class BifrostClient:
     def __init__(self):
@@ -23,6 +23,7 @@ class BifrostClient:
                 f"Provider '{provider}' not supported. "
                 f"Must be one of: {SUPPORTED_PROVIDERS}"
             )
+            
         return f"{provider}/{model}"
 
 bifrost_client = BifrostClient()
