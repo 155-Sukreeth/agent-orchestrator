@@ -242,7 +242,15 @@ const KnowledgeDashboard: React.FC = () => {
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <p className="text-sm font-medium text-gray-400">Last Synced</p>
-                  <p className="text-2xl font-semibold text-gray-100 mt-1 text-sm">{activeSource.last_sync || 'Never'}</p>
+                  <p className="text-2xl font-semibold text-gray-100 mt-1 text-sm">
+                    {activeSource.last_sync ? new Date(activeSource.last_sync).toLocaleString(undefined, { 
+                      month: 'short', 
+                      day: 'numeric', 
+                      year: 'numeric', 
+                      hour: 'numeric', 
+                      minute: '2-digit' 
+                    }) : 'Never'}
+                  </p>
                 </div>
               </div>
             </div>
