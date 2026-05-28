@@ -37,7 +37,6 @@ class WebCrawlerService:
 
         channel = f"integration_stream:{integration_id}"
         
-        from backend.services.knowledge_service import knowledge_service
         
         async with AsyncSessionLocal() as db:
             # 1. Update status
