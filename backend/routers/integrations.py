@@ -52,69 +52,7 @@ async def delete_integration(integration_id: int, db: AsyncSession = Depends(get
     
     return {"status": "success", "message": f"Integration {integration_id} and all its data have been hard deleted."}
 
-async def simulate_crawl(integration_id: int, redis):
-    # Wait to ensure stream is connected
-    await asyncio.sleep(2)
-    
-    channel = f"integration_stream:{integration_id}"
-    
-    # Send start event
-    start_event = SyncStartEvent(integration_id=integration_id)
-    if start_event.is_active:
-        await redis.publish(channel, start_event.model_dump_json())
-        
-    async with AsyncSessionLocal() as db:
-        # 1. Update status
-        integration = await db.get(Integration, integration_id)
-        if integration:
-            integration.status = IntegrationStatus.SYNCING
-            await db.commit()
-        
-        pages = [
-            {"title": "Home Page", "url": "/", "chunks": 10},
-            {"title": "About Us", "url": "/about", "chunks": 5},
-            {"title": "Pricing", "url": "/pricing", "chunks": 8},
-            {"title": "Documentation", "url": "/docs", "chunks": 25},
-            {"title": "Contact", "url": "/contact", "chunks": 3},
-        ]
-        
-        for i, page in enumerate(pages):
-            await asyncio.sleep(2) # Simulate network/processing delay
-            
-            doc = KnowledgeDocument(
-                integration_id=integration_id,
-                title=page["title"],
-                url_or_path=page["url"],
-                is_active=True,
-                metadata_json={"chunks": page["chunks"]}
-            )
-            db.add(doc)
-            await db.commit()
-            await db.refresh(doc)
-            
-            progress_event = SyncProgressEvent(
-                document=DocumentData(
-                    id=doc.id,
-                    title=doc.title,
-                    url=doc.url_or_path,
-                    isActive=doc.is_active,
-                    chunks=page["chunks"]
-                ),
-                progress=f"{i+1}/{len(pages)}"
-            )
-            if progress_event.is_active:
-                await redis.publish(channel, progress_event.model_dump_json())
-            
-        # Finish
-        await asyncio.sleep(1)
-        if integration:
-            integration.status = IntegrationStatus.SYNCED
-            integration.last_sync = func.now()
-            await db.commit()
-            
-    complete_event = SyncCompleteEvent(integration_id=integration_id)
-    if complete_event.is_active:
-        await redis.publish(channel, complete_event.model_dump_json())
+from backend.services.knowledge_service import knowledge_service
 
 @router.post("/{integration_id}/crawl")
 async def start_crawl(integration_id: int, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), redis = Depends(get_redis)):
@@ -122,7 +60,7 @@ async def start_crawl(integration_id: int, background_tasks: BackgroundTasks, db
     if not integration:
         raise HTTPException(status_code=404, detail="Integration not found")
         
-    background_tasks.add_task(simulate_crawl, integration_id, redis)
+    background_tasks.add_task(knowledge_service.execute_web_crawl, integration_id, integration.config, redis)
     return {"status": "started"}
 
 @router.get("/{integration_id}/stream")

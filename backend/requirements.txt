@@ -11,3 +11,4 @@ httpx
 python-multipart
 python-telegram-bot
 sse-starlette
+beautifulsoup4
