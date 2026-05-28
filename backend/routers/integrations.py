@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
-from backend.database import get_db
+from backend.database import get_db, AsyncSessionLocal
 from backend.models import Integration, KnowledgeDocument, IntegrationStatus
 from backend.redis_client import get_redis
 from backend.schemas.integration import (
