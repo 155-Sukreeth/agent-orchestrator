@@ -60,7 +60,8 @@ async def simulate_crawl(integration_id: int, db: AsyncSession, redis):
     
     # Send start event
     start_event = SyncStartEvent(integration_id=integration_id)
-    await redis.publish(channel, start_event.model_dump_json())
+    if start_event.is_active:
+        await redis.publish(channel, start_event.model_dump_json())
     
     # 1. Update status
     integration = await db.get(Integration, integration_id)
@@ -99,7 +100,8 @@ async def simulate_crawl(integration_id: int, db: AsyncSession, redis):
             ),
             progress=f"{i+1}/{len(pages)}"
         )
-        await redis.publish(channel, progress_event.model_dump_json())
+        if progress_event.is_active:
+            await redis.publish(channel, progress_event.model_dump_json())
         
     # Finish
     await asyncio.sleep(1)
@@ -108,7 +110,8 @@ async def simulate_crawl(integration_id: int, db: AsyncSession, redis):
         await db.commit()
         
     complete_event = SyncCompleteEvent(integration_id=integration_id)
-    await redis.publish(channel, complete_event.model_dump_json())
+    if complete_event.is_active:
+        await redis.publish(channel, complete_event.model_dump_json())
 
 
 @router.post("/{integration_id}/crawl")

@@ -6,9 +6,7 @@ class IntegrationCreate(BaseModel):
     type: str
     category: str = "web"
     config: Dict[str, Any] = {}
-
-class SSEEventBase(BaseModel):
-    type: str
+from backend.schemas.sse import SSEEventBase
 
 class SyncStartEvent(SSEEventBase):
     type: str = "sync_start"
