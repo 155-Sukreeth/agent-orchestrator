@@ -18,7 +18,8 @@ class EmbeddingService:
                 "model": self.model,
                 "content": {
                     "parts": [{"text": text}]
-                }
+                },
+                "outputDimensionality": 768
             }
             for text in texts
         ]
