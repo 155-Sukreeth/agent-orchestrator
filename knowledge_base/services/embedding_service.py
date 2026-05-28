@@ -4,36 +4,33 @@ from knowledge_base.config.settings import settings
 
 class EmbeddingService:
     def __init__(self):
-        self.api_key = settings.google_api_key
-        self.model = settings.gemini_embedding_model
-        # Gemini embedding endpoint
-        self.base_url = f"https://generativelanguage.googleapis.com/v1beta/{self.model}:batchEmbedContents"
+        # We now route through Bifrost gateway for observability and semantic caching
+        self.base_url = "http://bifrost:8080/v1/embeddings"
+        # Prefix the provider "gemini/" for Bifrost, and strip "models/" if present
+        raw_model = settings.gemini_embedding_model.replace("models/", "")
+        self.model = f"gemini/{raw_model}"
+        # We pass a dummy key since Bifrost manages the real API keys
+        self.api_key = "dummy_key"
 
     async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        if not self.api_key:
-            raise ValueError("Google API key is missing")
-            
-        requests = [
-            {
-                "model": self.model,
-                "content": {
-                    "parts": [{"text": text}]
-                },
-                "outputDimensionality": 768
-            }
-            for text in texts
-        ]
+        # Using OpenAI-compatible request format for Bifrost
+        payload = {
+            "model": self.model,
+            "input": texts,
+            "dimensions": 768
+        }
         
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{self.base_url}?key={self.api_key}",
-                json={"requests": requests},
+                self.base_url,
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json=payload,
                 timeout=30.0
             )
             response.raise_for_status()
             data = response.json()
             
-            # Extract embeddings from the response
-            return [emb["values"] for emb in data.get("embeddings", [])]
+            # Extract embeddings from standard OpenAI response format
+            return [item["embedding"] for item in data.get("data", [])]
 
 embedding_service = EmbeddingService()
