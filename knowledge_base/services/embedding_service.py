@@ -5,7 +5,7 @@ from knowledge_base.config.settings import settings
 class EmbeddingService:
     def __init__(self):
         self.api_key = settings.google_api_key
-        self.model = settings.embedding_model
+        self.model = settings.gemini_embedding_model
         # Gemini embedding endpoint
         self.base_url = f"https://generativelanguage.googleapis.com/v1beta/{self.model}:batchEmbedContents"
 
