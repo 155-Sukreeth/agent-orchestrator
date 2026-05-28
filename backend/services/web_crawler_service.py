@@ -154,11 +154,20 @@ class WebCrawlerService:
                                 await redis.publish(channel, progress_event.model_dump_json())
                             except Exception as e:
                                 logger.error(f"Error calling knowledge_base for {current_url}: {e}")
-                            
+                                doc.metadata_json = {"error": str(e), "chunks": 0}
+                                db.add(doc)
+                                if integration:
+                                    integration.status = IntegrationStatus.ERROR
+                                await db.commit()
+                                # Abort the entire crawl on fatal error (e.g. API keys invalid, DB down)
+                                complete_event = SyncCompleteEvent(integration_id=integration_id)
+                                await redis.publish(channel, complete_event.model_dump_json())
+                                return
+                                
                     except Exception as e:
                         logger.error(f"Error processing URL {current_url}: {e}")
                         
-            # 4. Finish
+            # 4. Finish normally
             if integration:
                 integration.status = IntegrationStatus.SYNCED
                 integration.last_sync = func.now()
