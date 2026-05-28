@@ -91,10 +91,30 @@ const ConnectSourceModal: React.FC<ConnectSourceModalProps> = ({ source, onClose
         );
       case 'file_upload':
         return (
-          <div className="border-2 border-dashed border-white/20 rounded-lg p-8 text-center hover:bg-white/5 hover:border-indigo-500/50 transition-all cursor-pointer">
-            <UploadCloud className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
-            <p className="text-sm text-gray-300">Drag and drop files here, or click to browse</p>
-            <p className="text-xs text-gray-500 mt-1">Supports PDF, TXT, MD, DOCX</p>
+          <div className="relative border-2 border-dashed border-white/20 rounded-lg p-8 text-center hover:bg-white/5 hover:border-indigo-500/50 transition-all cursor-pointer group">
+            <input 
+              type="file" 
+              multiple 
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                  const fileNames = Array.from(e.target.files).map(f => f.name);
+                  setConfig({ ...config, files: fileNames });
+                }
+              }}
+            />
+            <UploadCloud className="w-8 h-8 text-indigo-400 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+            {config.files && config.files.length > 0 ? (
+              <div className="text-sm text-emerald-400 font-medium">
+                {config.files.length} file(s) selected
+                <p className="text-xs text-gray-500 mt-1 truncate max-w-[200px] mx-auto">{config.files.join(', ')}</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-300">Drag and drop files here, or click to browse</p>
+                <p className="text-xs text-gray-500 mt-1">Supports PDF, TXT, MD, DOCX</p>
+              </>
+            )}
           </div>
         );
       case 'mcp':
