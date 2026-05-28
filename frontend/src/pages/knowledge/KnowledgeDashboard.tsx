@@ -3,15 +3,15 @@ import { Search, Globe, RefreshCw, MoreVertical, FileText, Layout, Share2, Uploa
 
 const mockSources = [
   { id: '1', name: 'Internal Documentation', type: 'confluence', status: 'synced', lastSync: '10 mins ago', itemType: 'Pages', count: 142 },
-  { id: '2', name: 'Company Website', type: 'web_crawler', status: 'synced', lastSync: '2 hours ago', itemType: 'URLs', count: 86 },
+  { id: '2', name: 'Company Website', type: 'web_crawler', status: 'syncing', lastSync: 'Syncing...', itemType: 'URLs', count: 86 },
   { id: '3', name: 'Postgres DB', type: 'postgres', status: 'error', lastSync: '1 day ago', itemType: 'Tables', count: 0 },
 ];
 
 const mockItems = [
-  { id: 'i1', title: 'Employee Onboarding Guide', url: '/hr/onboarding', chunks: 14 },
-  { id: 'i2', title: 'Q3 Financial Goals', url: '/finance/q3', chunks: 8 },
-  { id: 'i3', title: 'Engineering Best Practices', url: '/eng/practices', chunks: 32 },
-  { id: 'i4', title: 'Vacation Policy 2026', url: '/hr/vacation', chunks: 4 },
+  { id: 'i1', title: 'Employee Onboarding Guide', url: '/hr/onboarding', chunks: 14, isActive: true },
+  { id: 'i2', title: 'Q3 Financial Goals', url: '/finance/q3', chunks: 8, isActive: true },
+  { id: 'i3', title: 'Engineering Best Practices', url: '/eng/practices', chunks: 32, isActive: false },
+  { id: 'i4', title: 'Vacation Policy 2026', url: '/hr/vacation', chunks: 4, isActive: true },
 ];
 
 const getIconForType = (type: string) => {
@@ -30,7 +30,12 @@ const getIconForType = (type: string) => {
 };
 
 const KnowledgeDashboard: React.FC = () => {
-  const [activeSourceId, setActiveSourceId] = useState(mockSources[0].id);
+  const [activeSourceId, setActiveSourceId] = useState(mockSources[1].id); // Default to crawling source to show UI
+  const [items, setItems] = useState(mockItems);
+
+  const toggleItemActive = (id: string) => {
+    setItems(items.map(item => item.id === id ? { ...item, isActive: !item.isActive } : item));
+  };
 
   const activeSource = mockSources.find(s => s.id === activeSourceId);
   const ActiveIcon = activeSource ? getIconForType(activeSource.type) : FileBox;
@@ -54,8 +59,8 @@ const KnowledgeDashboard: React.FC = () => {
                   isActive ? 'bg-indigo-500/10 border border-indigo-500/20' : 'hover:bg-white/5 border border-transparent'
                 }`}
               >
-                <div className="relative">
-                  <Icon className={`w-5 h-5 mr-3 ${isActive ? 'text-indigo-400' : 'text-gray-400'}`} />
+                <div className="relative mr-3">
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-400' : 'text-gray-400'}`} />
                   <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-950 ${
                     source.status === 'synced' ? 'bg-emerald-500' : 
                     source.status === 'syncing' ? 'bg-amber-500' : 'bg-red-500'
@@ -97,6 +102,12 @@ const KnowledgeDashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
+                  {activeSource.status === 'syncing' && (
+                    <div className="flex items-center px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm font-medium rounded-lg mr-2 animate-pulse">
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Listening to Stream...
+                    </div>
+                  )}
                   <button className="flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 text-sm font-medium rounded-lg transition-colors border border-white/10">
                     <RefreshCw className="w-4 h-4 mr-2 text-gray-400" />
                     Force Resync
@@ -144,19 +155,28 @@ const KnowledgeDashboard: React.FC = () => {
                     <tr>
                       <th className="px-6 py-4 font-medium">Title / Name</th>
                       <th className="px-6 py-4 font-medium">Path / URL</th>
+                      <th className="px-6 py-4 font-medium text-center">Active</th>
                       <th className="px-6 py-4 font-medium text-right">Vector Chunks</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {mockItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-white/[0.02] transition-colors cursor-pointer group">
-                        <td className="px-6 py-4 font-medium text-gray-200 group-hover:text-indigo-300 transition-colors">
+                    {items.map((item) => (
+                      <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
+                        <td className="px-6 py-4 font-medium text-gray-200 group-hover:text-indigo-300 transition-colors cursor-pointer">
                           {item.title}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 cursor-pointer">
                           {item.url}
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-6 py-4 text-center">
+                          <button 
+                            onClick={() => toggleItemActive(item.id)}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${item.isActive ? 'bg-emerald-500' : 'bg-gray-700'}`}
+                          >
+                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${item.isActive ? 'translate-x-5' : 'translate-x-1'}`} />
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 text-right cursor-pointer">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-800 text-gray-300 border border-white/10">
                             {item.chunks} chunks
                           </span>
