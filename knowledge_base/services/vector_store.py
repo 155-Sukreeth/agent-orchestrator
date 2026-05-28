@@ -14,7 +14,7 @@ class VectorStoreService:
                 content=chunk,
                 chunk_index=i,
                 embedding=embedding,
-                embedding_model=settings.embedding_model,
+                embedding_model=settings.gemini_embedding_model,
                 is_active=is_active
             )
             # Upsert on conflict based on document_id and chunk_index (requires unique constraint, assuming added)

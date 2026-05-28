@@ -29,3 +29,8 @@ class SyncCompleteEvent(SSEEventBase):
     type: str = "sync_complete"
     integration_id: int
     message: str = "Synchronization complete"
+
+class SyncErrorEvent(SSEEventBase):
+    type: str = "sync_error"
+    integration_id: int
+    error: str

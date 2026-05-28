@@ -2,7 +2,7 @@ import httpx
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from backend.models import Integration, IntegrationStatus, KnowledgeDocument
-from backend.schemas.integration import SyncStartEvent, SyncCompleteEvent
+from backend.schemas.integration import SyncStartEvent, SyncCompleteEvent, SyncErrorEvent
 from backend.database import AsyncSessionLocal
 from sqlalchemy import func
 import logging
@@ -160,8 +160,8 @@ class WebCrawlerService:
                                     integration.status = IntegrationStatus.ERROR
                                 await db.commit()
                                 # Abort the entire crawl on fatal error (e.g. API keys invalid, DB down)
-                                complete_event = SyncCompleteEvent(integration_id=integration_id)
-                                await redis.publish(channel, complete_event.model_dump_json())
+                                error_event = SyncErrorEvent(integration_id=integration_id, error=str(e))
+                                await redis.publish(channel, error_event.model_dump_json())
                                 return
                                 
                     except Exception as e:

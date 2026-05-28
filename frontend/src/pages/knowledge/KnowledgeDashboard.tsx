@@ -93,6 +93,10 @@ const KnowledgeDashboard: React.FC = () => {
       } else if (data.type === 'sync_complete') {
         setIsCrawling(false);
         loadIntegrations(); // Refresh source statuses
+      } else if (data.type === 'sync_error') {
+        setIsCrawling(false);
+        alert(`Synchronization failed: ${data.error}`);
+        loadIntegrations();
       }
     };
 
