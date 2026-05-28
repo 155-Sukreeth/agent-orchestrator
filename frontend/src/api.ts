@@ -47,3 +47,31 @@ export const createWorkflow = async (workflowData: any) => {
   if (!response.ok) throw new Error('Failed to create workflow');
   return response.json();
 };
+
+export const fetchIntegrations = async () => {
+  const response = await fetch(`${API_URL}/api/integrations/`);
+  if (!response.ok) throw new Error('Failed to fetch integrations');
+  return response.json();
+};
+
+export const fetchIntegrationDocuments = async (id: string) => {
+  const response = await fetch(`${API_URL}/api/integrations/${id}/documents`);
+  if (!response.ok) throw new Error('Failed to fetch documents');
+  return response.json();
+};
+
+export const crawlIntegration = async (id: string) => {
+  const response = await fetch(`${API_URL}/api/integrations/${id}/crawl`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error('Failed to start crawl');
+  return response.json();
+};
+
+export const deleteIntegration = async (id: string) => {
+  const response = await fetch(`${API_URL}/api/integrations/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete integration');
+  return response.json();
+};

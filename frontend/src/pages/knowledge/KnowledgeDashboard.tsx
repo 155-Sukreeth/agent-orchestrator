@@ -1,18 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Globe, RefreshCw, MoreVertical, FileText, Layout, Share2, UploadCloud, Cpu, Database, Github, FileBox, Zap, Trash2 } from 'lucide-react';
-
-const mockSources = [
-  { id: '1', name: 'Internal Documentation', type: 'confluence', status: 'synced', lastSync: '10 mins ago', itemType: 'Pages', count: 142 },
-  { id: '2', name: 'Company Website', type: 'web_crawler', status: 'syncing', lastSync: 'Syncing...', itemType: 'URLs', count: 86 },
-  { id: '3', name: 'Postgres DB', type: 'postgres', status: 'error', lastSync: '1 day ago', itemType: 'Tables', count: 0 },
-];
-
-const mockItems = [
-  { id: 'i1', title: 'Employee Onboarding Guide', url: '/hr/onboarding', chunks: 14, isActive: true },
-  { id: 'i2', title: 'Q3 Financial Goals', url: '/finance/q3', chunks: 8, isActive: true },
-  { id: 'i3', title: 'Engineering Best Practices', url: '/eng/practices', chunks: 32, isActive: false },
-  { id: 'i4', title: 'Vacation Policy 2026', url: '/hr/vacation', chunks: 4, isActive: true },
-];
+import { fetchIntegrations, fetchIntegrationDocuments, crawlIntegration, deleteIntegration } from '../../../api';
 
 const getIconForType = (type: string) => {
   switch (type) {
@@ -30,15 +18,130 @@ const getIconForType = (type: string) => {
 };
 
 const KnowledgeDashboard: React.FC = () => {
-  const [activeSourceId, setActiveSourceId] = useState(mockSources[1].id); // Default to crawling source to show UI
-  const [items, setItems] = useState(mockItems);
+  const [sources, setSources] = useState<any[]>([]);
+  const [activeSourceId, setActiveSourceId] = useState<number | null>(null);
+  const [items, setItems] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCrawling, setIsCrawling] = useState(false);
+
+  useEffect(() => {
+    loadIntegrations();
+  }, []);
+
+  useEffect(() => {
+    if (activeSourceId) {
+      loadDocuments(activeSourceId);
+      setupSSE(activeSourceId);
+    }
+  }, [activeSourceId]);
+
+  const loadIntegrations = async () => {
+    try {
+      const data = await fetchIntegrations();
+      setSources(data);
+      if (data.length > 0 && !activeSourceId) {
+        setActiveSourceId(data[0].id);
+      }
+      setIsLoading(false);
+    } catch (err) {
+      console.error(err);
+      setIsLoading(false);
+    }
+  };
+
+  const loadDocuments = async (id: number) => {
+    try {
+      const data = await fetchIntegrationDocuments(id.toString());
+      setItems(data.map((d: any) => ({
+        id: d.id,
+        title: d.title,
+        url: d.url_or_path,
+        chunks: d.metadata_json?.chunks || 0,
+        isActive: d.is_active
+      })));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const setupSSE = (id: number) => {
+    const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
+    const source = new EventSource(`${API_URL}/api/integrations/${id}/stream`);
+
+    source.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      
+      if (data.type === 'document_crawled') {
+        setItems(prev => {
+          const doc = data.document;
+          const newItem = {
+            id: doc.id,
+            title: doc.title,
+            url: doc.url,
+            chunks: doc.chunks,
+            isActive: doc.isActive
+          };
+          // Append if not exists, otherwise update
+          const exists = prev.find(i => i.id === newItem.id);
+          if (exists) {
+            return prev.map(i => i.id === newItem.id ? newItem : i);
+          }
+          return [newItem, ...prev];
+        });
+      } else if (data.type === 'sync_complete') {
+        setIsCrawling(false);
+        loadIntegrations(); // Refresh source statuses
+      }
+    };
+
+    source.onerror = () => {
+      source.close();
+    };
+
+    return () => {
+      source.close();
+    };
+  };
+
+  const handleCrawl = async () => {
+    if (!activeSourceId) return;
+    try {
+      setIsCrawling(true);
+      
+      // Optimistically update status
+      setSources(sources.map(s => s.id === activeSourceId ? { ...s, status: 'syncing' } : s));
+      
+      await crawlIntegration(activeSourceId.toString());
+    } catch (err) {
+      console.error(err);
+      setIsCrawling(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!activeSourceId) return;
+    if (!confirm("Are you sure you want to permanently delete this integration and all its chunks?")) return;
+    
+    try {
+      await deleteIntegration(activeSourceId.toString());
+      setActiveSourceId(null);
+      loadIntegrations();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const toggleItemActive = (id: string) => {
     setItems(items.map(item => item.id === id ? { ...item, isActive: !item.isActive } : item));
+    // TODO: Update backend with isActive toggle
   };
 
-  const activeSource = mockSources.find(s => s.id === activeSourceId);
+  const activeSource = sources.find(s => s.id === activeSourceId);
   const ActiveIcon = activeSource ? getIconForType(activeSource.type) : FileBox;
+
+  if (isLoading) {
+    return <div className="flex-1 flex items-center justify-center text-gray-500">Loading sources...</div>;
+  }
 
   return (
     <div className="flex h-full">
@@ -48,7 +151,7 @@ const KnowledgeDashboard: React.FC = () => {
           <h2 className="text-sm font-semibold text-gray-200">Connected Sources</h2>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {mockSources.map((source) => {
+          {sources.map((source) => {
             const Icon = getIconForType(source.type);
             const isActive = activeSourceId === source.id;
             return (
@@ -96,23 +199,26 @@ const KnowledgeDashboard: React.FC = () => {
                       <span>•</span>
                       <span className="flex items-center">
                         <span className={`w-2 h-2 rounded-full mr-2 ${activeSource.status === 'error' ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
-                        {activeSource.status === 'error' ? 'Sync Failed' : 'Synced'} {activeSource.lastSync}
+                        {activeSource.status === 'error' ? 'Sync Failed' : 'Synced'}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
-                  {activeSource.status === 'syncing' && (
+                  {(activeSource.status === 'syncing' || isCrawling) && (
                     <div className="flex items-center px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm font-medium rounded-lg mr-2 animate-pulse">
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                       Listening to Stream...
                     </div>
                   )}
-                  <button className="flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 text-sm font-medium rounded-lg transition-colors border border-white/10">
-                    <RefreshCw className="w-4 h-4 mr-2 text-gray-400" />
+                  <button 
+                    onClick={handleCrawl}
+                    disabled={activeSource.status === 'syncing' || isCrawling}
+                    className="flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 text-sm font-medium rounded-lg transition-colors border border-white/10 disabled:opacity-50">
+                    <RefreshCw className={`w-4 h-4 mr-2 text-gray-400 ${(activeSource.status === 'syncing' || isCrawling) ? 'animate-spin' : ''}`} />
                     Force Resync
                   </button>
-                  <button className="flex items-center px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors border border-red-500/20">
+                  <button onClick={handleDelete} className="flex items-center px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors border border-red-500/20">
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete Source
                   </button>
@@ -125,16 +231,16 @@ const KnowledgeDashboard: React.FC = () => {
               {/* Stats Strip */}
               <div className="grid grid-cols-3 gap-4 mt-8">
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <p className="text-sm font-medium text-gray-400">Total {activeSource.itemType}</p>
-                  <p className="text-2xl font-semibold text-gray-100 mt-1">{activeSource.count}</p>
+                  <p className="text-sm font-medium text-gray-400">Total Items</p>
+                  <p className="text-2xl font-semibold text-gray-100 mt-1">{items.length}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <p className="text-sm font-medium text-gray-400">Total Vector Chunks</p>
-                  <p className="text-2xl font-semibold text-gray-100 mt-1">{activeSource.count * 12}</p>
+                  <p className="text-2xl font-semibold text-gray-100 mt-1">{items.reduce((acc, curr) => acc + (curr.chunks || 0), 0)}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <p className="text-sm font-medium text-gray-400">Last Synced</p>
-                  <p className="text-2xl font-semibold text-gray-100 mt-1 text-sm">{activeSource.lastSync}</p>
+                  <p className="text-2xl font-semibold text-gray-100 mt-1 text-sm">{activeSource.last_sync || 'Never'}</p>
                 </div>
               </div>
             </div>
@@ -142,7 +248,7 @@ const KnowledgeDashboard: React.FC = () => {
             {/* Extracted Items Table */}
             <div className="flex-1 overflow-auto p-8">
               <div className="mb-6 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-200">Extracted {activeSource.itemType}</h3>
+                <h3 className="text-lg font-semibold text-gray-200">Extracted Documents</h3>
                 <div className="relative">
                   <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input 
@@ -187,6 +293,13 @@ const KnowledgeDashboard: React.FC = () => {
                         </td>
                       </tr>
                     ))}
+                    {items.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                          No documents found. Click "Force Resync" to crawl.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

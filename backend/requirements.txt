@@ -10,3 +10,4 @@ redis
 httpx
 python-multipart
 python-telegram-bot
+sse-starlette
