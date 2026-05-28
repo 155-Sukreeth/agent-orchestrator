@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Globe, RefreshCw, MoreVertical, FileText, Layout, Share2, UploadCloud, Cpu, Database, Github, FileBox, Zap } from 'lucide-react';
+import { Search, Globe, RefreshCw, MoreVertical, FileText, Layout, Share2, UploadCloud, Cpu, Database, Github, FileBox, Zap, Trash2 } from 'lucide-react';
 
 const mockSources = [
   { id: '1', name: 'Internal Documentation', type: 'confluence', status: 'synced', lastSync: '10 mins ago', itemType: 'Pages', count: 142 },
@@ -111,6 +111,10 @@ const KnowledgeDashboard: React.FC = () => {
                   <button className="flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 text-sm font-medium rounded-lg transition-colors border border-white/10">
                     <RefreshCw className="w-4 h-4 mr-2 text-gray-400" />
                     Force Resync
+                  </button>
+                  <button className="flex items-center px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors border border-red-500/20">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Source
                   </button>
                   <button className="p-2 text-gray-400 hover:text-gray-200 transition-colors">
                     <MoreVertical className="w-5 h-5" />
