@@ -116,7 +116,7 @@ class Integration(Base):
 class KnowledgeDocument(Base):
     __tablename__ = "knowledge_documents"
     id = Column(Integer, primary_key=True, index=True)
-    integration_id = Column(Integer, ForeignKey("integrations.id"))
+    integration_id = Column(Integer, ForeignKey("integrations.id", ondelete="CASCADE"))
     
     title = Column(String, index=True)
     url_or_path = Column(String)  # The source URL or file path
@@ -131,7 +131,7 @@ class KnowledgeDocument(Base):
 class AgentTool(Base):
     __tablename__ = "agent_tools"
     id = Column(Integer, primary_key=True, index=True)
-    integration_id = Column(Integer, ForeignKey("integrations.id"))
+    integration_id = Column(Integer, ForeignKey("integrations.id", ondelete="CASCADE"))
     
     name = Column(String, index=True)  # Tool name provided to the LLM
     description = Column(String)       # Tool description for the LLM
@@ -145,3 +145,20 @@ class AgentTool(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     integration = relationship("Integration", back_populates="tools")
+
+class KnowledgeChunk(Base):
+    __tablename__ = "knowledge_chunks"
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("knowledge_documents.id", ondelete="CASCADE"))
+    integration_id = Column(Integer, ForeignKey("integrations.id", ondelete="CASCADE"))
+    
+    content = Column(String)
+    chunk_index = Column(Integer)
+    
+    embedding = Column(Vector(768)) 
+    embedding_model = Column(String, default="nomic-embed-text")
+    
+    is_active = Column(Boolean, default=True) 
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

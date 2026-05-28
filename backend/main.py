@@ -9,6 +9,7 @@ from backend.routers.agents import router as agents_router
 from backend.routers.workflows import router as workflows_router
 from backend.routers.runs import router as runs_router
 from backend.routers.ws import router as ws_router
+from backend.routers.integrations import router as integrations_router
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,6 +35,7 @@ app.include_router(agents_router)
 app.include_router(workflows_router)
 app.include_router(runs_router)
 app.include_router(ws_router)
+app.include_router(integrations_router, prefix="/api/integrations")
 
 @app.get("/health")
 def health():
