@@ -1,7 +1,7 @@
 import httpx
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
-from backend.models import Integration, IntegrationStatus
+from backend.models import Integration, IntegrationStatus, KnowledgeDocument
 from backend.schemas.integration import SyncStartEvent, SyncCompleteEvent
 from backend.database import AsyncSessionLocal
 from sqlalchemy import func
@@ -82,16 +82,52 @@ class WebCrawlerService:
                             text = self.extract_text_from_html(html)
                             title = soup.title.string if soup.title else current_url
                             
-                            # Hand off to knowledge service to chunk and embed
-                            await knowledge_service.process_document(
+                            # Create Document
+                            doc = KnowledgeDocument(
                                 integration_id=integration_id,
-                                title=title,
+                                title=title[:255],
                                 url_or_path=current_url,
-                                text=text,
-                                db=db,
-                                redis=redis,
-                                channel=channel
+                                is_active=True,
+                                metadata_json={"chunks": 0}
                             )
+                            db.add(doc)
+                            await db.commit()
+                            await db.refresh(doc)
+                            
+                            # Hand off to knowledge_base microservice to chunk and embed
+                            try:
+                                upsert_resp = await client.post(
+                                    "http://knowledge_base:8002/v1/upsert",
+                                    json={
+                                        "document_id": doc.id,
+                                        "content": text,
+                                        "content_type": "text"
+                                    },
+                                    timeout=60.0
+                                )
+                                upsert_resp.raise_for_status()
+                                chunks_count = upsert_resp.json().get("chunks", 0)
+                                
+                                # Update chunks count
+                                doc.metadata_json = {"chunks": chunks_count}
+                                db.add(doc)
+                                await db.commit()
+                                
+                                # Emit Progress
+                                from backend.schemas.integration import SyncProgressEvent, DocumentData
+                                progress_event = SyncProgressEvent(
+                                    document=DocumentData(
+                                        id=doc.id,
+                                        title=doc.title,
+                                        url=doc.url_or_path,
+                                        isActive=doc.is_active,
+                                        chunks=chunks_count
+                                    ),
+                                    progress="Processing..."
+                                )
+                                await redis.publish(channel, progress_event.model_dump_json())
+                            except Exception as e:
+                                logger.error(f"Error calling knowledge_base for {current_url}: {e}")
                             
                     except Exception as e:
                         logger.error(f"Error processing URL {current_url}: {e}")

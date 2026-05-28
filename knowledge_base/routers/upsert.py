@@ -20,21 +20,21 @@ async def process_upsert(document_id: int, content: str, content_type: str, sess
     # Fetch document metadata
     doc = await session.get(KnowledgeDocument, document_id)
     if not doc:
-        return
+        return 0
         
     integration_id = doc.integration_id
     
     # 1. Chunk content
     chunks = chunking_service.chunk_content(content, content_type)
     if not chunks:
-        return
+        return 0
         
     # 2. Get Embeddings
     try:
         embeddings = await embedding_service.get_embeddings(chunks)
     except Exception as e:
         print(f"Failed to get embeddings: {e}")
-        return
+        return 0
         
     # 3. Clear old chunks (simplest way to handle deduplication without unique constraints)
     from backend.models import KnowledgeChunk
@@ -50,8 +50,10 @@ async def process_upsert(document_id: int, content: str, content_type: str, sess
         embeddings=embeddings,
         is_active=doc.is_active
     )
+    
+    return len(chunks)
 
 @router.post("/upsert")
-async def upsert_document(req: UpsertRequest, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
-    background_tasks.add_task(process_upsert, req.document_id, req.content, req.content_type, db)
-    return {"status": "processing"}
+async def upsert_document(req: UpsertRequest, db: AsyncSession = Depends(get_db)):
+    chunks_count = await process_upsert(req.document_id, req.content, req.content_type, db)
+    return {"status": "success", "chunks": chunks_count}
