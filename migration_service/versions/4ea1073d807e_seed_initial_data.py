@@ -19,8 +19,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    import json
-    
     agents_table = sa.table(
         'agents',
         sa.column('name', sa.String),
