@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from backend.database import get_db, AsyncSessionLocal
 from backend.models import Integration, KnowledgeDocument, IntegrationStatus
 from backend.redis_client import get_redis
@@ -109,6 +109,7 @@ async def simulate_crawl(integration_id: int, redis):
         await asyncio.sleep(1)
         if integration:
             integration.status = IntegrationStatus.SYNCED
+            integration.last_sync = func.now()
             await db.commit()
             
     complete_event = SyncCompleteEvent(integration_id=integration_id)
