@@ -4,20 +4,14 @@ from sqlalchemy import select, delete
 from backend.database import get_db
 from backend.models import Integration, KnowledgeDocument, IntegrationStatus
 from backend.redis_client import get_redis
+from backend.schemas.integration import (
+    IntegrationCreate, SyncStartEvent, SyncProgressEvent, SyncCompleteEvent, DocumentData
+)
 from sse_starlette.sse import EventSourceResponse
 import asyncio
 import json
 
 router = APIRouter()
-
-from pydantic import BaseModel
-from typing import Dict, Any, Optional
-
-class IntegrationCreate(BaseModel):
-    name: str
-    type: str
-    category: str = "web"
-    config: Dict[str, Any] = {}
 
 @router.get("/")
 async def get_integrations(db: AsyncSession = Depends(get_db)):
@@ -59,19 +53,20 @@ async def delete_integration(integration_id: int, db: AsyncSession = Depends(get
     return {"status": "success", "message": f"Integration {integration_id} and all its data have been hard deleted."}
 
 async def simulate_crawl(integration_id: int, db: AsyncSession, redis):
-    # This is a stub for the real web crawler.
-    # It updates the DB status, sleeps to simulate work, saves dummy docs, and publishes to Redis.
-    
     # Wait to ensure stream is connected
     await asyncio.sleep(2)
+    
+    channel = f"integration_stream:{integration_id}"
+    
+    # Send start event
+    start_event = SyncStartEvent(integration_id=integration_id)
+    await redis.publish(channel, start_event.model_dump_json())
     
     # 1. Update status
     integration = await db.get(Integration, integration_id)
     if integration:
         integration.status = IntegrationStatus.SYNCING
         await db.commit()
-    
-    channel = f"integration_stream:{integration_id}"
     
     pages = [
         {"title": "Home Page", "url": "/", "chunks": 10},
@@ -84,7 +79,6 @@ async def simulate_crawl(integration_id: int, db: AsyncSession, redis):
     for i, page in enumerate(pages):
         await asyncio.sleep(2) # Simulate network/processing delay
         
-        # Save dummy document to DB
         doc = KnowledgeDocument(
             integration_id=integration_id,
             title=page["title"],
@@ -95,19 +89,17 @@ async def simulate_crawl(integration_id: int, db: AsyncSession, redis):
         await db.commit()
         await db.refresh(doc)
         
-        # Publish event
-        event_data = {
-            "type": "document_crawled",
-            "document": {
-                "id": doc.id,
-                "title": doc.title,
-                "url": doc.url_or_path,
-                "isActive": doc.is_active,
-                "chunks": page["chunks"]
-            },
-            "progress": f"{i+1}/{len(pages)}"
-        }
-        await redis.publish(channel, json.dumps(event_data))
+        progress_event = SyncProgressEvent(
+            document=DocumentData(
+                id=doc.id,
+                title=doc.title,
+                url=doc.url_or_path,
+                isActive=doc.is_active,
+                chunks=page["chunks"]
+            ),
+            progress=f"{i+1}/{len(pages)}"
+        )
+        await redis.publish(channel, progress_event.model_dump_json())
         
     # Finish
     await asyncio.sleep(1)
@@ -115,7 +107,8 @@ async def simulate_crawl(integration_id: int, db: AsyncSession, redis):
         integration.status = IntegrationStatus.SYNCED
         await db.commit()
         
-    await redis.publish(channel, json.dumps({"type": "sync_complete"}))
+    complete_event = SyncCompleteEvent(integration_id=integration_id)
+    await redis.publish(channel, complete_event.model_dump_json())
 
 
 @router.post("/{integration_id}/crawl")

@@ -71,7 +71,9 @@ const KnowledgeDashboard: React.FC = () => {
     source.onmessage = (event) => {
       const data = JSON.parse(event.data);
       
-      if (data.type === 'document_crawled') {
+      if (data.type === 'sync_start') {
+        setIsCrawling(true);
+      } else if (data.type === 'sync_progress') {
         setItems(prev => {
           const doc = data.document;
           const newItem = {
