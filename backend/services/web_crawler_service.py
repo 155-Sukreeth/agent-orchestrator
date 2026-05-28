@@ -49,10 +49,27 @@ class WebCrawlerService:
             start_event = SyncStartEvent(integration_id=integration_id)
             await redis.publish(channel, start_event.model_dump_json())
     
-            # 3. BFS Crawler Queue
+            # 3. BFS Crawler Queue & robots.txt parsing
+            import urllib.robotparser
+            import asyncio
+            
+            parsed_start = urlparse(start_url)
+            base_url = f"{parsed_start.scheme}://{parsed_start.netloc}"
+            base_domain = parsed_start.netloc
+            
+            rp = urllib.robotparser.RobotFileParser()
+            rp.set_url(f"{base_url}/robots.txt")
+            
+            async with httpx.AsyncClient() as client:
+                try:
+                    robots_resp = await client.get(f"{base_url}/robots.txt", timeout=5.0)
+                    if robots_resp.status_code == 200:
+                        rp.parse(robots_resp.text.splitlines())
+                except Exception as e:
+                    logger.warning(f"Could not fetch robots.txt for {base_domain}: {e}")
+            
             visited = set()
             queue = [(start_url, 0)]
-            base_domain = urlparse(start_url).netloc
             
             while queue:
                 current_url, depth = queue.pop(0)
@@ -60,7 +77,17 @@ class WebCrawlerService:
                 if current_url in visited or depth > max_depth:
                     continue
                     
+                if not rp.can_fetch("*", current_url):
+                    logger.info(f"Skipping {current_url} due to robots.txt restrictions")
+                    continue
+                    
                 visited.add(current_url)
+                
+                delay = rp.crawl_delay("*")
+                if delay:
+                    await asyncio.sleep(delay)
+                else:
+                    await asyncio.sleep(0.5) # Polite default delay
                 
                 # Extract links and process
                 async with httpx.AsyncClient() as client:
