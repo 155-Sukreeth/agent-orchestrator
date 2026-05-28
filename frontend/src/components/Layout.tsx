@@ -4,8 +4,8 @@ import { Bot, Network, ActivitySquare, LayoutDashboard } from 'lucide-react';
 
 const Layout: React.FC = () => {
   const navItems = [
-    { name: 'Agents', icon: Bot, path: '/agents' },
-    { name: 'Workflows', icon: Network, path: '/workflows' },
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/agents' },
+    { name: 'Builder', icon: Network, path: '/workflows/new' },
     { name: 'Monitor', icon: ActivitySquare, path: '/monitor' },
   ];
 

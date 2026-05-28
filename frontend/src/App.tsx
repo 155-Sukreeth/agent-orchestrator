@@ -12,7 +12,8 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to="/agents" replace />} />
           <Route path="agents" element={<AgentsDashboard />} />
-          <Route path="workflows" element={<WorkflowBuilder />} />
+          <Route path="workflows/new" element={<WorkflowBuilder />} />
+          <Route path="workflows/:id" element={<WorkflowBuilder />} />
           <Route path="monitor" element={<LiveMonitor />} />
         </Route>
       </Routes>

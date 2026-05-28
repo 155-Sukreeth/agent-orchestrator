@@ -24,47 +24,114 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, onClose, on
     onUpdate(node.id, formData);
   };
 
-  const renderAgentFields = () => (
+  const handleLlmChange = (field: string, value: any) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      llm_params: {
+        ...(prev.llm_params || {}),
+        [field]: value
+      }
+    }));
+  };
+
+  const renderAgentFields = () => {
+    const llm_params = formData.llm_params || {};
+    return (
+      <>
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-400 mb-1">System Prompt</label>
+          <textarea
+            value={formData.system_prompt || ''}
+            onChange={(e) => handleChange('system_prompt', e.target.value)}
+            className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white h-32 focus:ring-1 focus:ring-primary focus:border-primary custom-scrollbar"
+            placeholder="You are a helpful assistant..."
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-400 mb-1">Primary Model</label>
+          <select
+            value={llm_params.primary_model || 'gemini/gemini-3.1-pro'}
+            onChange={(e) => handleLlmChange('primary_model', e.target.value)}
+            className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-primary"
+          >
+            <option value="gemini/gemini-3.1-pro">Gemini 3.1 Pro</option>
+            <option value="gemini/gemini-3.5-flash">Gemini 3.5 Flash</option>
+            <option value="gemini/gemini-2.5-pro">Gemini 2.5 Pro</option>
+            <option value="gemini/gemini-2.5-flash">Gemini 2.5 Flash</option>
+            <option value="gemini/gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite</option>
+            <option value="gemini/gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+            <option value="groq/llama3-70b-8192">Llama 3 70B (Groq)</option>
+          </select>
+        </div>
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-400 mb-1 flex justify-between">
+            <span>Temperature</span>
+            <span>{llm_params.temperature || 0}</span>
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="2"
+            step="0.1"
+            value={llm_params.temperature || 0}
+            onChange={(e) => handleLlmChange('temperature', parseFloat(e.target.value))}
+            className="w-full accent-primary"
+          />
+        </div>
+      </>
+    );
+  };
+
+  const renderUserMessageFields = () => (
+    <div className="mb-4">
+      <label className="block text-xs font-medium text-gray-400 mb-1">State Key Mapping</label>
+      <input
+        type="text"
+        value={formData.input_key || 'message'}
+        onChange={(e) => handleChange('input_key', e.target.value)}
+        className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-purple-500"
+        placeholder="e.g. user_message"
+      />
+      <p className="text-xs text-gray-500 mt-2">The key in LangGraph state where this input will be stored.</p>
+    </div>
+  );
+
+  const renderKnowledgeFields = () => (
     <>
       <div className="mb-4">
-        <label className="block text-xs font-medium text-gray-400 mb-1">System Prompt</label>
-        <textarea
-          value={formData.system_prompt || ''}
-          onChange={(e) => handleChange('system_prompt', e.target.value)}
-          className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white h-32 focus:ring-1 focus:ring-primary focus:border-primary custom-scrollbar"
-          placeholder="You are a helpful assistant..."
+        <label className="block text-xs font-medium text-gray-400 mb-1">Knowledge Base ID</label>
+        <input
+          type="text"
+          value={formData.knowledge_base_id || ''}
+          onChange={(e) => handleChange('knowledge_base_id', e.target.value)}
+          className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-indigo-500"
+          placeholder="e.g. kb_12345"
         />
       </div>
       <div className="mb-4">
-        <label className="block text-xs font-medium text-gray-400 mb-1">Primary Model</label>
-        <select
-          value={formData.provider_model || 'openai/gpt-4o'}
-          onChange={(e) => handleChange('provider_model', e.target.value)}
-          className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-primary"
-        >
-          <option value="openai/gpt-4o">GPT-4o (OpenAI)</option>
-          <option value="openai/gpt-4o-mini">GPT-4o Mini (OpenAI)</option>
-          <option value="anthropic/claude-3-5-sonnet-20240620">Claude 3.5 Sonnet (Anthropic)</option>
-          <option value="gemini/gemini-1.5-pro">Gemini 1.5 Pro (Google)</option>
-          <option value="groq/llama3-70b-8192">Llama 3 70B (Groq)</option>
-        </select>
-      </div>
-      <div className="mb-4">
-        <label className="block text-xs font-medium text-gray-400 mb-1 flex justify-between">
-          <span>Temperature</span>
-          <span>{formData.temperature || 0}</span>
-        </label>
+        <label className="block text-xs font-medium text-gray-400 mb-1">Top K Results</label>
         <input
-          type="range"
-          min="0"
-          max="2"
-          step="0.1"
-          value={formData.temperature || 0}
-          onChange={(e) => handleChange('temperature', parseFloat(e.target.value))}
-          className="w-full accent-primary"
+          type="number"
+          min="1"
+          max="20"
+          value={formData.top_k || 3}
+          onChange={(e) => handleChange('top_k', parseInt(e.target.value))}
+          className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-indigo-500"
         />
       </div>
     </>
+  );
+
+  const renderHumanPauseFields = () => (
+    <div className="mb-4">
+      <label className="block text-xs font-medium text-gray-400 mb-1">Approval Prompt</label>
+      <textarea
+        value={formData.approval_prompt || ''}
+        onChange={(e) => handleChange('approval_prompt', e.target.value)}
+        className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white h-24 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 custom-scrollbar"
+        placeholder="e.g. Approve this refund request?"
+      />
+    </div>
   );
 
   const renderRouterFields = () => (
@@ -142,7 +209,10 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, onClose, on
           />
         </div>
 
-        {node.type === 'agentNode' && renderAgentFields()}
+        {node.type === 'userMessageNode' && renderUserMessageFields()}
+        {node.type === 'knowledgeNode' && renderKnowledgeFields()}
+        {node.type === 'humanPauseNode' && renderHumanPauseFields()}
+        {(node.type === 'agentNode' || node.type === 'reactAgentNode' || node.type === 'llmNode') && renderAgentFields()}
         {node.type === 'routerNode' && renderRouterFields()}
         {node.type === 'toolNode' && renderToolFields()}
       </div>

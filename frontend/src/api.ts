@@ -1,13 +1,13 @@
 const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
 
 export const fetchAgents = async () => {
-  const response = await fetch(`${API_URL}/agents`);
+  const response = await fetch(`${API_URL}/agents/`);
   if (!response.ok) throw new Error('Failed to fetch agents');
   return response.json();
 };
 
 export const createAgent = async (agentData: any) => {
-  const response = await fetch(`${API_URL}/agents`, {
+  const response = await fetch(`${API_URL}/agents/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(agentData)
@@ -17,8 +17,24 @@ export const createAgent = async (agentData: any) => {
 };
 
 export const fetchWorkflows = async () => {
-  const response = await fetch(`${API_URL}/workflows`);
+  const response = await fetch(`${API_URL}/workflows/`);
   if (!response.ok) throw new Error('Failed to fetch workflows');
+  return response.json();
+};
+
+export const fetchWorkflow = async (id: string) => {
+  const response = await fetch(`${API_URL}/workflows/${id}`);
+  if (!response.ok) throw new Error('Failed to fetch workflow');
+  return response.json();
+};
+
+export const updateWorkflow = async (id: string, workflowData: any) => {
+  const response = await fetch(`${API_URL}/workflows/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(workflowData)
+  });
+  if (!response.ok) throw new Error('Failed to update workflow');
   return response.json();
 };
 
