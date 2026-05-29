@@ -59,6 +59,25 @@ TOOL_INTEGRATION_TYPES = [
     IntegrationType.API_TOOL
 ]
 
+class Organization(Base):
+    __tablename__ = "organizations"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"))
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    organization = relationship("Organization")
+
 class IntegrationCategory(str, enum.Enum):
     WEB = "web"
     INTERNAL = "internal"
@@ -73,6 +92,7 @@ class IntegrationStatus(str, enum.Enum):
 class Agent(Base):
     __tablename__ = "agents"
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True) # Will make nullable=False after migration
     name = Column(String, index=True)
     role = Column(String)
     provider = Column(String)
@@ -87,6 +107,7 @@ class Agent(Base):
 class Workflow(Base):
     __tablename__ = "workflows"
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
     name = Column(String, index=True)
     description = Column(String)
     description_embedding = Column(Vector(1536))
@@ -102,6 +123,7 @@ class Workflow(Base):
 class Run(Base):
     __tablename__ = "runs"
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
     workflow_id = Column(Integer, ForeignKey("workflows.id"))
     sender_id = Column(String, index=True)
     thread_id = Column(String, index=True)
@@ -138,6 +160,7 @@ class Message(Base):
 class Integration(Base):
     __tablename__ = "integrations"
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
     name = Column(String, index=True)
     type = Column(SQLEnum(IntegrationType))
     category = Column(SQLEnum(IntegrationCategory))
@@ -159,6 +182,7 @@ class Integration(Base):
 class KnowledgeDocument(Base):
     __tablename__ = "knowledge_documents"
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
     integration_id = Column(Integer, ForeignKey("integrations.id", ondelete="CASCADE"))
     
     title = Column(String, index=True)
@@ -174,6 +198,7 @@ class KnowledgeDocument(Base):
 class AgentTool(Base):
     __tablename__ = "agent_tools"
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
     integration_id = Column(Integer, ForeignKey("integrations.id", ondelete="CASCADE"))
     
     name = Column(String, index=True)  # Tool name provided to the LLM
@@ -192,6 +217,7 @@ class AgentTool(Base):
 class KnowledgeChunk(Base):
     __tablename__ = "knowledge_chunks"
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
     document_id = Column(Integer, ForeignKey("knowledge_documents.id", ondelete="CASCADE"))
     integration_id = Column(Integer, ForeignKey("integrations.id", ondelete="CASCADE"))
     
@@ -209,6 +235,7 @@ class KnowledgeChunk(Base):
 class UploadedFile(Base):
     __tablename__ = "uploaded_files"
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
     filename = Column(String, index=True)
     content_type = Column(String)
     size = Column(Integer)
@@ -229,6 +256,7 @@ class AppConnection(Base):
     __tablename__ = "app_connections"
     
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
     name = Column(String, unique=True, index=True) 
     type = Column(SQLEnum(AppConnectionType))
     credentials = Column(EncryptedJSON, default=dict)

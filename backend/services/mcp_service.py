@@ -54,6 +54,7 @@ class MCPService:
                     # 5. Insert new tools
                     for tool in tools:
                         db_tool = AgentTool(
+                            organization_id=integration.organization_id,
                             integration_id=integration_id,
                             name=tool.name,
                             description=tool.description,
@@ -66,11 +67,15 @@ class MCPService:
 
             except Exception as e:
                 logger.error(f"Error syncing MCP server {connection_url}: {e}")
+                await db.rollback()
+                
                 error_event = SyncErrorEvent(integration_id=integration_id, error=str(e))
                 await redis.publish(channel, error_event.model_dump_json())
                 
-                integration.status = IntegrationStatus.ERROR
-                await db.commit()
+                integration = await db.get(Integration, integration_id)
+                if integration:
+                    integration.status = IntegrationStatus.ERROR
+                    await db.commit()
                 return
 
             # 6. Finish normally

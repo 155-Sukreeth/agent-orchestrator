@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class SemanticRouterService:
-    async def route_message(self, db: AsyncSession, message: str, channel: str, agents_client: AgentsClient) -> Workflow | None:
+    async def route_message(self, db: AsyncSession, message: str, channel: str, agents_client: AgentsClient, org_id: int) -> Workflow | None:
         """
         Uses the Agents client to run semantic routing logic over active workflows.
         """
@@ -17,7 +17,7 @@ class SemanticRouterService:
         
         # A simple query for all active workflows for now, bypassing repo specific method for speed
         result = await db.execute(
-            select(Workflow).where(Workflow.is_active == True)
+            select(Workflow).where(Workflow.is_active == True, Workflow.organization_id == org_id)
         )
         active_workflows = result.scalars().all()
         

@@ -17,3 +17,5 @@ python-docx
 aiofiles
 fastmcp
 cryptography
+python-jose[cryptography]
+passlib[bcrypt]

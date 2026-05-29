@@ -12,6 +12,7 @@ from backend.routers.ws import router as ws_router
 from backend.routers.integrations import router as integrations_router
 from backend.routers.files import router as files_router
 from backend.routers.connections import router as connections_router
+from backend.routers.auth import router as auth_router
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,20 +23,21 @@ async def lifespan(app: FastAPI):
 
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="AI Agent Orchestrator", lifespan=lifespan)
+app = FastAPI(title="Agent Orchestrator API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict this to ["http://localhost:3000", "http://localhost:5173"]
+    allow_origins=["*"], # For dev only, restrict in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(auth_router, prefix="/api")
 app.include_router(webhooks_router)
-app.include_router(agents_router)
-app.include_router(workflows_router)
-app.include_router(runs_router)
+app.include_router(agents_router, prefix="/api/agents")
+app.include_router(workflows_router, prefix="/api/workflows")
+app.include_router(runs_router, prefix="/api/runs")
 app.include_router(ws_router)
 app.include_router(integrations_router, prefix="/api/integrations")
 app.include_router(files_router, prefix="/api/files")

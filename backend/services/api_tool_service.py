@@ -55,6 +55,7 @@ class APIToolService:
                 
                 # 5. Insert new tool
                 db_tool = AgentTool(
+                    organization_id=integration.organization_id,
                     integration_id=integration_id,
                     name=tool_name,
                     description=description,
@@ -68,11 +69,15 @@ class APIToolService:
 
             except Exception as e:
                 logger.error(f"Error syncing API tool {integration_id}: {e}")
+                await db.rollback()
+                
                 error_event = SyncErrorEvent(integration_id=integration_id, error=str(e))
                 await redis.publish(channel, error_event.model_dump_json())
                 
-                integration.status = IntegrationStatus.ERROR
-                await db.commit()
+                integration = await db.get(Integration, integration_id)
+                if integration:
+                    integration.status = IntegrationStatus.ERROR
+                    await db.commit()
                 return
 
             # 6. Finish normally

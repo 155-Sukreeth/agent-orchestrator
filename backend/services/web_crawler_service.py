@@ -110,6 +110,7 @@ class WebCrawlerService:
                             
                             # Create Document
                             doc = KnowledgeDocument(
+                                organization_id=integration.organization_id if integration else None,
                                 integration_id=integration_id,
                                 title=title[:255],
                                 url_or_path=current_url,
@@ -154,10 +155,17 @@ class WebCrawlerService:
                                 await redis.publish(channel, progress_event.model_dump_json())
                             except Exception as e:
                                 logger.error(f"Error calling knowledge_base for {current_url}: {e}")
-                                doc.metadata_json = {"error": str(e), "chunks": 0}
-                                db.add(doc)
+                                await db.rollback()
+                                
+                                doc = await db.get(KnowledgeDocument, doc.id)
+                                if doc:
+                                    doc.metadata_json = {"error": str(e), "chunks": 0}
+                                    db.add(doc)
+                                
+                                integration = await db.get(Integration, integration_id)
                                 if integration:
                                     integration.status = IntegrationStatus.ERROR
+                                    
                                 await db.commit()
                                 # Abort the entire crawl on fatal error (e.g. API keys invalid, DB down)
                                 error_event = SyncErrorEvent(integration_id=integration_id, error=str(e))
