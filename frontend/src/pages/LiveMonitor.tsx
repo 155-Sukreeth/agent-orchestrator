@@ -16,7 +16,8 @@ const LiveMonitor: React.FC = () => {
     setLogs([{ timestamp: new Date().toISOString(), level: 'SYSTEM', message: `Connecting to run ${runId}...` }]);
     
     // In dev, Vite is on 5173, backend is on 8000
-    const wsUrl = `ws://localhost:8000/ws/runs/${runId}/logs`;
+    const token = localStorage.getItem('token');
+    const wsUrl = `ws://localhost:8000/ws/runs/${runId}/logs?token=${token || ''}`;
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {

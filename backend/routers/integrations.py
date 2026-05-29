@@ -9,6 +9,9 @@ from backend.schemas.integration import (
     IntegrationCreate, SyncStartEvent, SyncProgressEvent, SyncCompleteEvent, DocumentData
 )
 from sse_starlette.sse import EventSourceResponse
+from fastapi import Query
+from jose import jwt, JWTError
+from backend.config.settings import settings
 import asyncio
 import json
 
@@ -127,7 +130,17 @@ async def toggle_tool_active(tool_id: int, db: AsyncSession = Depends(get_db), c
     return {"status": "success", "is_active": tool.is_active}
 
 @router.get("/{integration_id}/stream")
-async def stream_crawl_events(integration_id: int, redis = Depends(get_redis)):
+async def stream_crawl_events(integration_id: int, token: str = Query(None), redis = Depends(get_redis)):
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication token missing")
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        user_id = int(payload.get("sub"))
+        # Verify access in generator context if needed, but for now we just verify the JWT is valid
+        # A more robust check would verify the Integration belongs to the user_id's organization
+    except (JWTError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     async def event_generator():
         pubsub = redis.pubsub()
         channel = f"integration_stream:{integration_id}"
@@ -140,9 +153,12 @@ async def stream_crawl_events(integration_id: int, redis = Depends(get_redis)):
                     if message:
                         data = message["data"]
                         yield data
-                        
-                        if '"type": "sync_complete"' in data:
-                            break
+                        try:
+                            parsed = json.loads(data)
+                            if parsed.get("type") in ["sync_complete", "sync_error"]:
+                                break
+                        except json.JSONDecodeError:
+                            pass
                     else:
                         await asyncio.sleep(0.5)
                 except Exception as e:

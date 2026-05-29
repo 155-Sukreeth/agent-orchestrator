@@ -64,6 +64,7 @@ class FileProcessorService:
                     
                     # Create KnowledgeDocument
                     doc = KnowledgeDocument(
+                        organization_id=integration.organization_id,
                         integration_id=integration_id,
                         title=uploaded_file.filename,
                         url_or_path=uploaded_file.storage_path,
@@ -108,8 +109,11 @@ class FileProcessorService:
                         
                 except Exception as e:
                     logger.error(f"Error processing file ID {file_id}: {e}")
+                    await db.rollback()
                     error_event = SyncErrorEvent(integration_id=integration_id, error=str(e))
                     await redis.publish(channel, error_event.model_dump_json())
+                    
+                    integration = await db.get(Integration, integration_id)
                     if integration:
                         integration.status = IntegrationStatus.ERROR
                         await db.commit()
