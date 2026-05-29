@@ -54,6 +54,17 @@ export const fetchIntegrations = async () => {
   return response.json();
 };
 
+export const uploadFiles = async (formData: FormData) => {
+  const response = await fetch(`${API_URL}/api/files/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) {
+    throw new Error('Failed to upload files');
+  }
+  return response.json();
+};
+
 export const createIntegration = async (integrationData: any) => {
   const response = await fetch(`${API_URL}/api/integrations/`, {
     method: 'POST',

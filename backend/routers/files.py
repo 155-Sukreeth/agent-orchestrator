@@ -1,0 +1,45 @@
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List
+
+from backend.database import get_db
+from backend.models import UploadedFile
+from backend.adaptors.file_storage import file_upload_adaptor
+
+router = APIRouter()
+
+@router.post("/upload")
+async def upload_files(
+    files: List[UploadFile] = File(...), 
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Accepts multipart/form-data files, saves them using the FileUploadAdaptor,
+    and inserts records into the UploadedFile database table.
+    """
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded")
+        
+    uploaded_records = []
+    
+    for file in files:
+        # 1. Save file locally using adaptor
+        metadata = await file_upload_adaptor.save_file(file)
+        
+        # 2. Insert into DB
+        db_file = UploadedFile(
+            filename=metadata["filename"],
+            content_type=metadata["content_type"],
+            size=metadata["size"],
+            storage_path=metadata["storage_path"]
+        )
+        db.add(db_file)
+        await db.commit()
+        await db.refresh(db_file)
+        
+        uploaded_records.append({
+            "id": db_file.id,
+            "filename": db_file.filename
+        })
+        
+    return {"status": "success", "files": uploaded_records}

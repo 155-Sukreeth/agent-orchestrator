@@ -53,6 +53,8 @@ async def delete_integration(integration_id: int, db: AsyncSession = Depends(get
     return {"status": "success", "message": f"Integration {integration_id} and all its data have been hard deleted."}
 
 from backend.services.web_crawler_service import web_crawler_service
+from backend.services.file_processor_service import file_processor_service
+from backend.models import IntegrationType
 
 @router.post("/{integration_id}/crawl")
 async def start_crawl(integration_id: int, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), redis = Depends(get_redis)):
@@ -60,7 +62,11 @@ async def start_crawl(integration_id: int, background_tasks: BackgroundTasks, db
     if not integration:
         raise HTTPException(status_code=404, detail="Integration not found")
         
-    background_tasks.add_task(web_crawler_service.execute_web_crawl, integration_id, integration.config, redis)
+    if integration.type == IntegrationType.FILE_UPLOAD:
+        background_tasks.add_task(file_processor_service.execute_file_processing, integration_id, integration.config, redis)
+    else:
+        background_tasks.add_task(web_crawler_service.execute_web_crawl, integration_id, integration.config, redis)
+        
     return {"status": "started"}
 
 @router.get("/{integration_id}/stream")

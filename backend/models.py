@@ -162,3 +162,14 @@ class KnowledgeChunk(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class UploadedFile(Base):
+    __tablename__ = "uploaded_files"
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String, index=True)
+    content_type = Column(String)
+    size = Column(Integer)
+    storage_path = Column(String) # Physical path or cloud URL
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

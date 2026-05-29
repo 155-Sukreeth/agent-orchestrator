@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Globe, UploadCloud, Layout, FileText, Share2, Cpu, Database, Github, Zap } from 'lucide-react';
+import { X, Globe, UploadCloud, Layout, FileText, Share2, Cpu, Database, Github, Zap, Loader2 } from 'lucide-react';
+import { uploadFiles } from '../../api';
 
 export type SourceCategory = 'web' | 'internal' | 'code';
 export type SourceType = 'web_crawler' | 'file_upload' | 'confluence' | 'notion' | 'sharepoint' | 'mcp' | 'postgres' | 'github' | 'api_tool';
@@ -33,15 +34,46 @@ interface ConnectSourceModalProps {
 const ConnectSourceModal: React.FC<ConnectSourceModalProps> = ({ source, onClose, onAdd }) => {
   const [config, setConfig] = useState<any>({});
 
+  const [isUploading, setIsUploading] = useState(false);
+
   if (!source) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    let finalConfig = { ...config };
+    
+    // If it's a file upload, we must physically upload the files first
+    if (source.id === 'file_upload' && config._rawFiles) {
+      setIsUploading(true);
+      try {
+        const formData = new FormData();
+        config._rawFiles.forEach((file: File) => {
+          formData.append('files', file);
+        });
+        
+        const uploadResult = await uploadFiles(formData);
+        // The API returns { files: [{ id, filename }] }
+        finalConfig = { 
+          ...finalConfig, 
+          file_ids: uploadResult.files.map((f: any) => f.id) 
+        };
+        // Remove raw files from config so it doesn't get serialized to db
+        delete finalConfig._rawFiles;
+      } catch (err) {
+        console.error("File upload failed", err);
+        setIsUploading(false);
+        alert("Failed to upload files");
+        return;
+      }
+      setIsUploading(false);
+    }
+    
     onAdd({
       id: Math.random().toString(36).substr(2, 9),
       type: source.id,
       name: source.name,
-      config
+      config: finalConfig
     });
   };
 
@@ -98,8 +130,9 @@ const ConnectSourceModal: React.FC<ConnectSourceModalProps> = ({ source, onClose
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               onChange={(e) => {
                 if (e.target.files && e.target.files.length > 0) {
-                  const fileNames = Array.from(e.target.files).map(f => f.name);
-                  setConfig({ ...config, files: fileNames });
+                  const files = Array.from(e.target.files);
+                  const fileNames = files.map(f => f.name);
+                  setConfig({ ...config, files: fileNames, _rawFiles: files });
                 }
               }}
             />
@@ -280,9 +313,15 @@ const ConnectSourceModal: React.FC<ConnectSourceModalProps> = ({ source, onClose
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors shadow-[0_0_15px_rgba(99,102,241,0.3)]"
+              disabled={isUploading}
+              className="flex items-center px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors shadow-[0_0_15px_rgba(99,102,241,0.3)] disabled:opacity-50"
             >
-              Stage Connection
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : 'Stage Connection'}
             </button>
           </div>
         </form>
