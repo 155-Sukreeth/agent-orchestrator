@@ -7,9 +7,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 class RunService:
-    async def start_run(self, db: AsyncSession, workflow_id: int, input_data: str, agents_client: AgentsClient, sender_id: str = None, thread_id: str = None) -> str:
+    async def start_run(self, db: AsyncSession, workflow_id: int, input_data: str, agents_client: AgentsClient, org_id: int, sender_id: str = None, thread_id: str = None) -> str:
         # Verify workflow exists
-        workflow = await workflow_repository.get_by_id(db, workflow_id)
+        workflow = await workflow_repository.get_by_id(db, workflow_id, org_id)
         if not workflow:
             raise ValueError(f"Workflow {workflow_id} not found")
 
@@ -21,7 +21,7 @@ class RunService:
             "sender_id": sender_id,
             "thread_id": thread_id
         }
-        run = await run_repository.create(db, run_data)
+        run = await run_repository.create(db, run_data, org_id)
         run_id_str = str(run.id)
 
         # Delegate execution

@@ -5,7 +5,8 @@ from typing import List, Any, Dict
 from pydantic import BaseModel
 
 from backend.database import get_db
-from backend.models import AppConnection, AppConnectionType
+from backend.models import AppConnection, AppConnectionType, Organization
+from backend.auth.dependencies import get_current_org
 
 router = APIRouter(tags=["connections"])
 
@@ -65,26 +66,27 @@ class ConnectionResponse(BaseModel):
         from_attributes = True
 
 @router.get("/", response_model=List[ConnectionResponse])
-async def get_connections(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(AppConnection))
+async def get_connections(db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
+    result = await db.execute(select(AppConnection).where(AppConnection.organization_id == current_org.id))
     return result.scalars().all()
 
 @router.get("/{connection_id}", response_model=ConnectionResponse)
-async def get_connection(connection_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(AppConnection).where(AppConnection.id == connection_id))
+async def get_connection(connection_id: int, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
+    result = await db.execute(select(AppConnection).where(AppConnection.id == connection_id, AppConnection.organization_id == current_org.id))
     connection = result.scalars().first()
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found")
     return connection
 
 @router.post("/", response_model=ConnectionResponse)
-async def create_connection(conn_data: ConnectionCreate, db: AsyncSession = Depends(get_db)):
+async def create_connection(conn_data: ConnectionCreate, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
     # Check if name exists
-    existing = await db.execute(select(AppConnection).where(AppConnection.name == conn_data.name))
+    existing = await db.execute(select(AppConnection).where(AppConnection.name == conn_data.name, AppConnection.organization_id == current_org.id))
     if existing.scalars().first():
         raise HTTPException(status_code=400, detail="Connection with this name already exists")
         
     db_conn = AppConnection(
+        organization_id=current_org.id,
         name=conn_data.name,
         type=conn_data.type,
         credentials=conn_data.credentials,
@@ -96,15 +98,15 @@ async def create_connection(conn_data: ConnectionCreate, db: AsyncSession = Depe
     return db_conn
 
 @router.put("/{connection_id}", response_model=ConnectionResponse)
-async def update_connection(connection_id: int, conn_data: ConnectionUpdate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(AppConnection).where(AppConnection.id == connection_id))
+async def update_connection(connection_id: int, conn_data: ConnectionUpdate, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
+    result = await db.execute(select(AppConnection).where(AppConnection.id == connection_id, AppConnection.organization_id == current_org.id))
     connection = result.scalars().first()
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found")
         
     if conn_data.name is not None and conn_data.name != connection.name:
         # Check name conflict
-        existing = await db.execute(select(AppConnection).where(AppConnection.name == conn_data.name))
+        existing = await db.execute(select(AppConnection).where(AppConnection.name == conn_data.name, AppConnection.organization_id == current_org.id))
         if existing.scalars().first():
             raise HTTPException(status_code=400, detail="Connection with this name already exists")
         connection.name = conn_data.name
@@ -119,8 +121,8 @@ async def update_connection(connection_id: int, conn_data: ConnectionUpdate, db:
     return connection
 
 @router.delete("/{connection_id}")
-async def delete_connection(connection_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(AppConnection).where(AppConnection.id == connection_id))
+async def delete_connection(connection_id: int, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
+    result = await db.execute(select(AppConnection).where(AppConnection.id == connection_id, AppConnection.organization_id == current_org.id))
     connection = result.scalars().first()
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found")
