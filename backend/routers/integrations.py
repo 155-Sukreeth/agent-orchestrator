@@ -55,6 +55,7 @@ async def delete_integration(integration_id: int, db: AsyncSession = Depends(get
 from backend.services.web_crawler_service import web_crawler_service
 from backend.services.file_processor_service import file_processor_service
 from backend.services.mcp_service import mcp_service
+from backend.services.api_tool_service import api_tool_service
 from backend.models import IntegrationType, AgentTool
 
 @router.post("/{integration_id}/crawl")
@@ -67,6 +68,8 @@ async def start_crawl(integration_id: int, background_tasks: BackgroundTasks, db
         background_tasks.add_task(file_processor_service.execute_file_processing, integration_id, integration.config, redis)
     elif integration.type == IntegrationType.MCP:
         background_tasks.add_task(mcp_service.sync_mcp_tools, integration_id, integration.config, redis)
+    elif integration.type == IntegrationType.API_TOOL:
+        background_tasks.add_task(api_tool_service.sync_api_tool, integration_id, integration.config, redis)
     else:
         background_tasks.add_task(web_crawler_service.execute_web_crawl, integration_id, integration.config, redis)
         
