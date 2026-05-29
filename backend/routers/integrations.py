@@ -37,9 +37,16 @@ from backend.models import IntegrationType, AgentTool, DOCUMENT_INTEGRATION_TYPE
 @router.get("/active/tools")
 async def get_active_tools(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(AgentTool).where(AgentTool.is_active == True)
+        select(AgentTool, Integration.name.label("integration_name"))
+        .join(Integration, AgentTool.integration_id == Integration.id)
+        .where(AgentTool.is_active == True)
     )
-    return result.scalars().all()
+    tools = []
+    for tool, integration_name in result.all():
+        tool_dict = {column.name: getattr(tool, column.name) for column in tool.__table__.columns}
+        tool_dict["integration_name"] = integration_name
+        tools.append(tool_dict)
+    return tools
 
 @router.get("/active/documents")
 async def get_active_document_integrations(db: AsyncSession = Depends(get_db)):
