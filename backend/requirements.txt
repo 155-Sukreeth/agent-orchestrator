@@ -16,3 +16,4 @@ pypdf
 python-docx
 aiofiles
 fastmcp
+cryptography

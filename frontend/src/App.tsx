@@ -7,8 +7,9 @@ import LiveMonitor from './pages/LiveMonitor';
 import KnowledgeLayout from './pages/knowledge/KnowledgeLayout';
 import SourceCatalog from './pages/knowledge/SourceCatalog';
 import KnowledgeDashboard from './pages/knowledge/KnowledgeDashboard';
-
 import KnowledgeIndexRedirect from './pages/knowledge/KnowledgeIndexRedirect';
+import ConnectionsLayout from './pages/connections/ConnectionsLayout';
+import ConnectionsDashboard from './pages/connections/ConnectionsDashboard';
 
 function App() {
   return (
@@ -23,6 +24,9 @@ function App() {
             <Route index element={<KnowledgeIndexRedirect />} />
             <Route path="catalog" element={<SourceCatalog />} />
             <Route path="dashboard" element={<KnowledgeDashboard />} />
+          </Route>
+          <Route path="connections" element={<ConnectionsLayout />}>
+            <Route index element={<ConnectionsDashboard />} />
           </Route>
           <Route path="monitor" element={<LiveMonitor />} />
         </Route>

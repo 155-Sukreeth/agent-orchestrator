@@ -11,6 +11,7 @@ from backend.routers.runs import router as runs_router
 from backend.routers.ws import router as ws_router
 from backend.routers.integrations import router as integrations_router
 from backend.routers.files import router as files_router
+from backend.routers.connections import router as connections_router
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,6 +39,7 @@ app.include_router(runs_router)
 app.include_router(ws_router)
 app.include_router(integrations_router, prefix="/api/integrations")
 app.include_router(files_router, prefix="/api/files")
+app.include_router(connections_router, prefix="/api/connections")
 
 @app.get("/health")
 def health():

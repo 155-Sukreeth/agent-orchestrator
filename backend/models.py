@@ -1,9 +1,37 @@
-from sqlalchemy import Column, Integer, String, Boolean, JSON, DateTime, Float, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Boolean, JSON, DateTime, Float, ForeignKey, Enum as SQLEnum, TypeDecorator
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 from backend.database import Base
+from backend.config.settings import settings
+from cryptography.fernet import Fernet
 import enum
+import json
+
+class EncryptedJSON(TypeDecorator):
+    """
+    Encrypts JSON dictionaries as text in the DB using Fernet symmetric encryption.
+    """
+    impl = String
+    cache_ok = True
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ensure we have a valid fernet key
+        self.fernet = Fernet(settings.ENCRYPTION_KEY.encode('utf-8'))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        json_str = json.dumps(value)
+        encrypted = self.fernet.encrypt(json_str.encode('utf-8'))
+        return encrypted.decode('utf-8')
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        decrypted = self.fernet.decrypt(value.encode('utf-8'))
+        return json.loads(decrypted.decode('utf-8'))
 
 class IntegrationType(str, enum.Enum):
     WEB_CRAWLER = "web_crawler"
@@ -188,3 +216,111 @@ class UploadedFile(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class AppConnectionType(str, enum.Enum):
+    SLACK = "slack"
+    TELEGRAM = "telegram"
+    JIRA = "jira"
+    CONFLUENCE = "confluence"
+    GOOGLE_DRIVE = "google_drive"
+    CUSTOM_WEBHOOK = "custom_webhook"
+
+class AppConnection(Base):
+    __tablename__ = "app_connections"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True) 
+    type = Column(SQLEnum(AppConnectionType))
+    credentials = Column(EncryptedJSON, default=dict)
+    is_active = Column(Boolean, default=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    __mapper_args__ = {
+        "polymorphic_on": type,
+        "polymorphic_identity": "base"
+    }
+
+class SlackConnectionModel(AppConnection):
+    __mapper_args__ = {"polymorphic_identity": AppConnectionType.SLACK}
+    
+    @property
+    def bot_token(self): return self.credentials.get("bot_token")
+    @bot_token.setter
+    def bot_token(self, value): self.credentials["bot_token"] = value
+    
+    @property
+    def signing_secret(self): return self.credentials.get("signing_secret")
+    @signing_secret.setter
+    def signing_secret(self, value): self.credentials["signing_secret"] = value
+
+class TelegramConnectionModel(AppConnection):
+    __mapper_args__ = {"polymorphic_identity": AppConnectionType.TELEGRAM}
+    
+    @property
+    def bot_token(self): return self.credentials.get("bot_token")
+    @bot_token.setter
+    def bot_token(self, value): self.credentials["bot_token"] = value
+
+class JiraConnectionModel(AppConnection):
+    __mapper_args__ = {"polymorphic_identity": AppConnectionType.JIRA}
+    
+    @property
+    def base_url(self): return self.credentials.get("base_url")
+    @base_url.setter
+    def base_url(self, value): self.credentials["base_url"] = value
+    
+    @property
+    def email(self): return self.credentials.get("email")
+    @email.setter
+    def email(self, value): self.credentials["email"] = value
+    
+    @property
+    def api_token(self): return self.credentials.get("api_token")
+    @api_token.setter
+    def api_token(self, value): self.credentials["api_token"] = value
+
+class ConfluenceConnectionModel(AppConnection):
+    __mapper_args__ = {"polymorphic_identity": AppConnectionType.CONFLUENCE}
+    
+    @property
+    def base_url(self): return self.credentials.get("base_url")
+    @base_url.setter
+    def base_url(self, value): self.credentials["base_url"] = value
+    
+    @property
+    def email(self): return self.credentials.get("email")
+    @email.setter
+    def email(self, value): self.credentials["email"] = value
+    
+    @property
+    def api_token(self): return self.credentials.get("api_token")
+    @api_token.setter
+    def api_token(self, value): self.credentials["api_token"] = value
+
+class GoogleDriveConnectionModel(AppConnection):
+    __mapper_args__ = {"polymorphic_identity": AppConnectionType.GOOGLE_DRIVE}
+    
+    @property
+    def service_account_json(self): return self.credentials.get("service_account_json")
+    @service_account_json.setter
+    def service_account_json(self, value): self.credentials["service_account_json"] = value
+
+class CustomWebhookConnectionModel(AppConnection):
+    __mapper_args__ = {"polymorphic_identity": AppConnectionType.CUSTOM_WEBHOOK}
+    
+    @property
+    def webhook_url(self): return self.credentials.get("webhook_url")
+    @webhook_url.setter
+    def webhook_url(self, value): self.credentials["webhook_url"] = value
+    
+    @property
+    def auth_header_name(self): return self.credentials.get("auth_header_name")
+    @auth_header_name.setter
+    def auth_header_name(self, value): self.credentials["auth_header_name"] = value
+    
+    @property
+    def auth_header_value(self): return self.credentials.get("auth_header_value")
+    @auth_header_value.setter
+    def auth_header_value(self, value): self.credentials["auth_header_value"] = value

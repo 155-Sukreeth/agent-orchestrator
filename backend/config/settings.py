@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_WEBHOOK_SECRET: str = ""
 
+    # Fernet encryption key for data-layer credential encryption
+    ENCRYPTION_KEY: str = "Wv3aL5n8KpHqM_kU1rX2zY9tV7gT4wS0eC6bN3jM5_E="
+
     class Config:
         env_file = ".env"
         extra = "allow"

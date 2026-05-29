@@ -122,3 +122,43 @@ export const fetchActiveDocumentIntegrations = async () => {
   if (!response.ok) throw new Error('Failed to fetch active document integrations');
   return response.json();
 };
+
+export const fetchConnections = async () => {
+  const response = await fetch(`${API_URL}/api/connections/`);
+  if (!response.ok) throw new Error('Failed to fetch connections');
+  return response.json();
+};
+
+export const createConnection = async (connectionData: any) => {
+  const response = await fetch(`${API_URL}/api/connections/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(connectionData)
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to create connection');
+  }
+  return response.json();
+};
+
+export const updateConnection = async (id: number, connectionData: any) => {
+  const response = await fetch(`${API_URL}/api/connections/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(connectionData)
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to update connection');
+  }
+  return response.json();
+};
+
+export const deleteConnection = async (id: number) => {
+  const response = await fetch(`${API_URL}/api/connections/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete connection');
+  return response.json();
+};
