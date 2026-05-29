@@ -47,3 +47,66 @@ export const createWorkflow = async (workflowData: any) => {
   if (!response.ok) throw new Error('Failed to create workflow');
   return response.json();
 };
+
+export const fetchIntegrations = async () => {
+  const response = await fetch(`${API_URL}/api/integrations/`);
+  if (!response.ok) throw new Error('Failed to fetch integrations');
+  return response.json();
+};
+
+export const uploadFiles = async (formData: FormData) => {
+  const response = await fetch(`${API_URL}/api/files/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) {
+    throw new Error('Failed to upload files');
+  }
+  return response.json();
+};
+
+export const createIntegration = async (integrationData: any) => {
+  const response = await fetch(`${API_URL}/api/integrations/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(integrationData)
+  });
+  if (!response.ok) throw new Error('Failed to create integration');
+  return response.json();
+};
+
+export const fetchIntegrationDocuments = async (id: string) => {
+  const response = await fetch(`${API_URL}/api/integrations/${id}/documents`);
+  if (!response.ok) throw new Error('Failed to fetch documents');
+  return response.json();
+};
+
+export const fetchIntegrationTools = async (id: string) => {
+  const response = await fetch(`${API_URL}/api/integrations/${id}/tools`);
+  if (!response.ok) throw new Error('Failed to fetch tools');
+  return response.json();
+};
+
+export const toggleToolActive = async (toolId: number) => {
+  const response = await fetch(`${API_URL}/api/integrations/tools/${toolId}/toggle`, {
+    method: 'PUT'
+  });
+  if (!response.ok) throw new Error('Failed to toggle tool');
+  return response.json();
+};
+
+export const crawlIntegration = async (id: string) => {
+  const response = await fetch(`${API_URL}/api/integrations/${id}/crawl`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error('Failed to start crawl');
+  return response.json();
+};
+
+export const deleteIntegration = async (id: string) => {
+  const response = await fetch(`${API_URL}/api/integrations/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete integration');
+  return response.json();
+};

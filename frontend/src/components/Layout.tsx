@@ -1,11 +1,12 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Bot, Network, ActivitySquare, LayoutDashboard } from 'lucide-react';
+import { Bot, Network, ActivitySquare, LayoutDashboard, Database } from 'lucide-react';
 
 const Layout: React.FC = () => {
   const navItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/agents' },
     { name: 'Builder', icon: Network, path: '/workflows/new' },
+    { name: 'Knowledge', icon: Database, path: '/knowledge' },
     { name: 'Monitor', icon: ActivitySquare, path: '/monitor' },
   ];
 

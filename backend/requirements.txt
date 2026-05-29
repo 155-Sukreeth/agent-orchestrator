@@ -10,3 +10,9 @@ redis
 httpx
 python-multipart
 python-telegram-bot
+sse-starlette
+beautifulsoup4
+pypdf
+python-docx
+aiofiles
+fastmcp
