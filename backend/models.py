@@ -16,6 +16,21 @@ class IntegrationType(str, enum.Enum):
     GITHUB = "github"
     API_TOOL = "api_tool"
 
+DOCUMENT_INTEGRATION_TYPES = [
+    IntegrationType.WEB_CRAWLER,
+    IntegrationType.FILE_UPLOAD,
+    IntegrationType.CONFLUENCE,
+    IntegrationType.NOTION,
+    IntegrationType.SHAREPOINT,
+    IntegrationType.POSTGRES,
+    IntegrationType.GITHUB
+]
+
+TOOL_INTEGRATION_TYPES = [
+    IntegrationType.MCP,
+    IntegrationType.API_TOOL
+]
+
 class IntegrationCategory(str, enum.Enum):
     WEB = "web"
     INTERNAL = "internal"

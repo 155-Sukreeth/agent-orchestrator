@@ -32,6 +32,26 @@ async def create_integration(integration_in: IntegrationCreate, db: AsyncSession
     await db.refresh(db_integration)
     return db_integration
 
+from backend.models import IntegrationType, AgentTool, DOCUMENT_INTEGRATION_TYPES
+
+@router.get("/active/tools")
+async def get_active_tools(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(AgentTool).where(AgentTool.is_active == True)
+    )
+    return result.scalars().all()
+
+@router.get("/active/documents")
+async def get_active_document_integrations(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Integration)
+        .where(Integration.is_active == True)
+        .where(Integration.status == IntegrationStatus.SYNCED)
+        .where(Integration.type.in_(DOCUMENT_INTEGRATION_TYPES))
+    )
+    return result.scalars().all()
+
+
 @router.get("/{integration_id}/documents")
 async def get_integration_documents(integration_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -56,7 +76,7 @@ from backend.services.web_crawler_service import web_crawler_service
 from backend.services.file_processor_service import file_processor_service
 from backend.services.mcp_service import mcp_service
 from backend.services.api_tool_service import api_tool_service
-from backend.models import IntegrationType, AgentTool
+from backend.services.api_tool_service import api_tool_service
 
 @router.post("/{integration_id}/crawl")
 async def start_crawl(integration_id: int, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), redis = Depends(get_redis)):

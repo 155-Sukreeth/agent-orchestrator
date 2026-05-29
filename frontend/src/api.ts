@@ -110,3 +110,15 @@ export const deleteIntegration = async (id: string) => {
   if (!response.ok) throw new Error('Failed to delete integration');
   return response.json();
 };
+
+export const fetchActiveTools = async () => {
+  const response = await fetch(`${API_URL}/api/integrations/active/tools`);
+  if (!response.ok) throw new Error('Failed to fetch active tools');
+  return response.json();
+};
+
+export const fetchActiveDocumentIntegrations = async () => {
+  const response = await fetch(`${API_URL}/api/integrations/active/documents`);
+  if (!response.ok) throw new Error('Failed to fetch active document integrations');
+  return response.json();
+};
