@@ -15,3 +15,4 @@ beautifulsoup4
 pypdf
 python-docx
 aiofiles
+fastmcp

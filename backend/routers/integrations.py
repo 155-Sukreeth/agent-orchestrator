@@ -54,7 +54,8 @@ async def delete_integration(integration_id: int, db: AsyncSession = Depends(get
 
 from backend.services.web_crawler_service import web_crawler_service
 from backend.services.file_processor_service import file_processor_service
-from backend.models import IntegrationType
+from backend.services.mcp_service import mcp_service
+from backend.models import IntegrationType, AgentTool
 
 @router.post("/{integration_id}/crawl")
 async def start_crawl(integration_id: int, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), redis = Depends(get_redis)):
@@ -64,10 +65,30 @@ async def start_crawl(integration_id: int, background_tasks: BackgroundTasks, db
         
     if integration.type == IntegrationType.FILE_UPLOAD:
         background_tasks.add_task(file_processor_service.execute_file_processing, integration_id, integration.config, redis)
+    elif integration.type == IntegrationType.MCP:
+        background_tasks.add_task(mcp_service.sync_mcp_tools, integration_id, integration.config, redis)
     else:
         background_tasks.add_task(web_crawler_service.execute_web_crawl, integration_id, integration.config, redis)
         
     return {"status": "started"}
+
+@router.get("/{integration_id}/tools")
+async def get_integration_tools(integration_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(AgentTool).where(AgentTool.integration_id == integration_id)
+    )
+    tools = result.scalars().all()
+    return tools
+
+@router.put("/tools/{tool_id}/toggle")
+async def toggle_tool_active(tool_id: int, db: AsyncSession = Depends(get_db)):
+    tool = await db.get(AgentTool, tool_id)
+    if not tool:
+        raise HTTPException(status_code=404, detail="Tool not found")
+    
+    tool.is_active = not tool.is_active
+    await db.commit()
+    return {"status": "success", "is_active": tool.is_active}
 
 @router.get("/{integration_id}/stream")
 async def stream_crawl_events(integration_id: int, redis = Depends(get_redis)):

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Globe, RefreshCw, MoreVertical, FileText, Layout, Share2, UploadCloud, Cpu, Database, Github, FileBox, Zap, Trash2 } from 'lucide-react';
-import { fetchIntegrations, fetchIntegrationDocuments, crawlIntegration, deleteIntegration } from '../../api';
+import { fetchIntegrations, fetchIntegrationDocuments, fetchIntegrationTools, toggleToolActive, crawlIntegration, deleteIntegration } from '../../api';
 
 const getIconForType = (type: string) => {
   switch (type) {
@@ -29,10 +29,14 @@ const KnowledgeDashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    let cleanup = () => {};
     if (activeSourceId) {
       loadDocuments(activeSourceId);
-      setupSSE(activeSourceId);
+      cleanup = setupSSE(activeSourceId);
     }
+    return () => {
+      cleanup();
+    };
   }, [activeSourceId]);
 
   const loadIntegrations = async () => {
@@ -51,14 +55,26 @@ const KnowledgeDashboard: React.FC = () => {
 
   const loadDocuments = async (id: number) => {
     try {
-      const data = await fetchIntegrationDocuments(id.toString());
-      setItems(data.map((d: any) => ({
-        id: d.id,
-        title: d.title,
-        url: d.url_or_path,
-        chunks: d.metadata_json?.chunks || 0,
-        isActive: d.is_active
-      })));
+      const source = sources.find(s => s.id === id);
+      if (source && (source.type === 'mcp' || source.type === 'api_tool')) {
+        const data = await fetchIntegrationTools(id.toString());
+        setItems(data.map((d: any) => ({
+          id: d.id,
+          title: d.name,
+          url: d.description || 'No description',
+          chunks: null,
+          isActive: d.is_active
+        })));
+      } else {
+        const data = await fetchIntegrationDocuments(id.toString());
+        setItems(data.map((d: any) => ({
+          id: d.id,
+          title: d.title,
+          url: d.url_or_path,
+          chunks: d.metadata_json?.chunks || 0,
+          isActive: d.is_active
+        })));
+      }
     } catch (err) {
       console.error(err);
     }
@@ -93,6 +109,7 @@ const KnowledgeDashboard: React.FC = () => {
       } else if (data.type === 'sync_complete') {
         setIsCrawling(false);
         loadIntegrations(); // Refresh source statuses
+        loadDocuments(id);  // Refresh tools/documents list automatically
       } else if (data.type === 'sync_error') {
         setIsCrawling(false);
         alert(`Synchronization failed: ${data.error}`);
@@ -137,9 +154,20 @@ const KnowledgeDashboard: React.FC = () => {
     }
   };
 
-  const toggleItemActive = (id: string) => {
-    setItems(items.map(item => item.id === id ? { ...item, isActive: !item.isActive } : item));
-    // TODO: Update backend with isActive toggle
+  const toggleItemActive = async (id: string | number) => {
+    const activeSrc = sources.find(s => s.id === activeSourceId);
+    if (activeSrc && (activeSrc.type === 'mcp' || activeSrc.type === 'api_tool')) {
+      // Toggle tool
+      try {
+        const res = await toggleToolActive(id as number);
+        setItems(items.map(item => item.id === id ? { ...item, isActive: res.is_active } : item));
+      } catch (err) {
+        console.error("Failed to toggle tool", err);
+      }
+    } else {
+      setItems(items.map(item => item.id === id ? { ...item, isActive: !item.isActive } : item));
+      // TODO: Update backend with isActive toggle for documents
+    }
   };
 
   const activeSource = sources.find(s => s.id === activeSourceId);
@@ -262,7 +290,9 @@ const KnowledgeDashboard: React.FC = () => {
             {/* Extracted Items Table */}
             <div className="flex-1 overflow-auto p-8">
               <div className="mb-6 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-200">Extracted Documents</h3>
+                <h3 className="text-lg font-semibold text-gray-200">
+                  {activeSource.type === 'mcp' || activeSource.type === 'api_tool' ? 'Extracted Tools' : 'Extracted Documents'}
+                </h3>
                 <div className="relative">
                   <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input 
@@ -277,10 +307,12 @@ const KnowledgeDashboard: React.FC = () => {
                 <table className="w-full text-left text-sm text-gray-400">
                   <thead className="text-xs text-gray-500 uppercase bg-gray-900 border-b border-white/5">
                     <tr>
-                      <th className="px-6 py-4 font-medium">Title / Name</th>
-                      <th className="px-6 py-4 font-medium">Path / URL</th>
+                      <th className="px-6 py-4 font-medium">{activeSource.type === 'mcp' || activeSource.type === 'api_tool' ? 'Tool Name' : 'Title / Name'}</th>
+                      <th className="px-6 py-4 font-medium">{activeSource.type === 'mcp' || activeSource.type === 'api_tool' ? 'Description' : 'Path / URL'}</th>
                       <th className="px-6 py-4 font-medium text-center">Active</th>
-                      <th className="px-6 py-4 font-medium text-right">Vector Chunks</th>
+                      {activeSource.type !== 'mcp' && activeSource.type !== 'api_tool' && (
+                        <th className="px-6 py-4 font-medium text-right">Vector Chunks</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -300,17 +332,21 @@ const KnowledgeDashboard: React.FC = () => {
                             <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${item.isActive ? 'translate-x-5' : 'translate-x-1'}`} />
                           </button>
                         </td>
-                        <td className="px-6 py-4 text-right cursor-pointer">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-800 text-gray-300 border border-white/10">
-                            {item.chunks} chunks
-                          </span>
-                        </td>
+                        {item.chunks !== null && (
+                          <td className="px-6 py-4 text-right cursor-pointer">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-800 text-gray-300 border border-white/10">
+                              {item.chunks} chunks
+                            </span>
+                          </td>
+                        )}
                       </tr>
                     ))}
                     {items.length === 0 && (
                       <tr>
                         <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                          No documents found. Click "Force Resync" to crawl.
+                          {activeSource.type === 'mcp' || activeSource.type === 'api_tool' 
+                            ? 'No tools found. Click "Force Resync" to fetch.' 
+                            : 'No documents found. Click "Force Resync" to crawl.'}
                         </td>
                       </tr>
                     )}

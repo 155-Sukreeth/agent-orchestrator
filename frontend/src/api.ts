@@ -81,6 +81,20 @@ export const fetchIntegrationDocuments = async (id: string) => {
   return response.json();
 };
 
+export const fetchIntegrationTools = async (id: string) => {
+  const response = await fetch(`${API_URL}/api/integrations/${id}/tools`);
+  if (!response.ok) throw new Error('Failed to fetch tools');
+  return response.json();
+};
+
+export const toggleToolActive = async (toolId: number) => {
+  const response = await fetch(`${API_URL}/api/integrations/tools/${toolId}/toggle`, {
+    method: 'PUT'
+  });
+  if (!response.ok) throw new Error('Failed to toggle tool');
+  return response.json();
+};
+
 export const crawlIntegration = async (id: string) => {
   const response = await fetch(`${API_URL}/api/integrations/${id}/crawl`, {
     method: 'POST',
