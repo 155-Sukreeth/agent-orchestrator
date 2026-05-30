@@ -13,7 +13,11 @@ def build_messages(state: AgentState, system_prompt: str) -> list[dict]:
         messages.append({"role": "system", "content": system_prompt})
     
     for msg in state.get("messages", []):
-        messages.append(msg)
+        if hasattr(msg, "type"):
+            role = "assistant" if msg.type == "ai" else ("user" if msg.type == "human" else msg.type)
+            messages.append({"role": role, "content": getattr(msg, "content", "")})
+        elif isinstance(msg, dict):
+            messages.append(msg)
         
     return messages
 
@@ -26,9 +30,9 @@ class AgentNode(BaseNode):
         system_prompt = self.config.get("system_prompt", "You are a helpful assistant.")
 
         try:
-            provider, model = llm_config.primary_model.split("/")
+            provider, model = llm_config.primary_model.split("/", 1)
         except ValueError:
-            provider, model = llm_params_registry.AGENT_DEFAULT.primary_model.split("/")
+            provider, model = llm_params_registry.AGENT_DEFAULT.primary_model.split("/", 1)
             
         resolved_model = bifrost_client.resolve_model(provider, model)
         

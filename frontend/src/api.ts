@@ -22,11 +22,18 @@ export const fetchWorkflows = async () => {
   return response.json();
 };
 
+export const fetchTemplates = async () => {
+  const response = await fetch(`${API_URL}/workflows/templates`);
+  if (!response.ok) throw new Error('Failed to fetch templates');
+  return response.json();
+};
+
 export const fetchWorkflow = async (id: string) => {
   const response = await fetch(`${API_URL}/workflows/${id}`);
   if (!response.ok) throw new Error('Failed to fetch workflow');
   return response.json();
 };
+
 
 export const updateWorkflow = async (id: string, workflowData: any) => {
   const response = await fetch(`${API_URL}/workflows/${id}`, {
@@ -38,8 +45,16 @@ export const updateWorkflow = async (id: string, workflowData: any) => {
   return response.json();
 };
 
+export const deleteWorkflow = async (id: string) => {
+  const response = await fetch(`${API_URL}/workflows/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete workflow');
+  return response.json();
+};
+
 export const createWorkflow = async (workflowData: any) => {
-  const response = await fetch(`${API_URL}/workflows`, {
+  const response = await fetch(`${API_URL}/workflows/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(workflowData)
@@ -160,5 +175,36 @@ export const deleteConnection = async (id: number) => {
     method: 'DELETE',
   });
   if (!response.ok) throw new Error('Failed to delete connection');
+  return response.json();
+};
+
+export const fetchWorkflowRuns = async (workflowId: string) => {
+  const response = await fetch(`${API_URL}/runs/workflow/${workflowId}`);
+  if (!response.ok) throw new Error('Failed to fetch runs');
+  return response.json();
+};
+
+export const fetchRunDetails = async (runId: string) => {
+  const response = await fetch(`${API_URL}/runs/${runId}`);
+  if (!response.ok) throw new Error('Failed to fetch run details');
+  return response.json();
+};
+
+export const startTestRun = async (workflowId: string, inputData: any) => {
+  const payload = {
+    message: typeof inputData === 'string' ? inputData : (inputData?.topic || inputData?.input || inputData?.message || null),
+    data: typeof inputData === 'object' && inputData !== null ? inputData : {}
+  };
+
+  const response = await fetch(`${API_URL}/runs/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      workflow_id: parseInt(workflowId),
+      payload: payload,
+      run_type: 'test'
+    })
+  });
+  if (!response.ok) throw new Error('Failed to start test run');
   return response.json();
 };

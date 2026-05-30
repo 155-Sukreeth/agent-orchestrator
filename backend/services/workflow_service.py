@@ -14,14 +14,34 @@ class WorkflowService:
         workflows = await workflow_repository.get_all(db, skip, limit)
         return [WorkflowResponse.model_validate(w) for w in workflows]
 
+    async def list_templates(self, db: AsyncSession) -> List[dict]:
+        from backend.models import DefaultWorkflowTemplate
+        from sqlalchemy import select
+        result = await db.execute(select(DefaultWorkflowTemplate))
+        return [
+            {
+                "id": t.id,
+                "name": t.name,
+                "description": t.description,
+                "graph_definition": t.graph_definition,
+                "created_at": t.created_at
+            }
+            for t in result.scalars().all()
+        ]
+
     async def create_workflow(self, db: AsyncSession, workflow_in: WorkflowCreate) -> WorkflowResponse:
+
         workflow_data = workflow_in.model_dump()
         if "description_embedding" not in workflow_data or workflow_data["description_embedding"] is None:
             # Dummy embedding for MVP
             workflow_data["description_embedding"] = [0.0] * 1536 
             
         workflow = await workflow_repository.create(db, workflow_data)
-        return WorkflowResponse.model_validate(workflow)
+        
+        # Refetch to eager-load relationships (like triggers) for Pydantic validation
+        workflow_with_rels = await workflow_repository.get_by_id(db, workflow.id)
+        
+        return WorkflowResponse.model_validate(workflow_with_rels)
 
     async def update_workflow(self, db: AsyncSession, workflow_id: int, workflow_in: WorkflowUpdate) -> WorkflowResponse:
         db_workflow = await workflow_repository.get_by_id(db, workflow_id)

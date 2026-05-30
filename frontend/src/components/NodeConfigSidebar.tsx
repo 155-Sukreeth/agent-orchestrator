@@ -96,13 +96,16 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
   };
 
   const handleLlmChange = (field: string, value: any) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      llm_params: {
-        ...(prev.llm_params || {}),
-        [field]: value
+    setFormData((prev: any) => {
+      const newLlmParams = { ...(prev.llm_params || {}), [field]: value };
+      if (newLlmParams.provider && newLlmParams.model_name) {
+        newLlmParams.primary_model = `${newLlmParams.provider}/${newLlmParams.model_name}`;
       }
-    }));
+      return {
+        ...prev,
+        llm_params: newLlmParams
+      };
+    });
   };
 
   const SegmentedControl = ({ value, onChange, options }: any) => (

@@ -16,8 +16,8 @@ import { RouterNode, LoopNode, ParallelSplitNode, MergeNode, HumanPauseNode, Sta
 import { ToolNode, KnowledgeNode } from '../components/nodes/integrate/IntegrateNodes';
 import NodeConfigSidebar from '../components/NodeConfigSidebar';
 import TriggersPanel from '../components/workflow/TriggersPanel';
-import { Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, X, Search, Zap, Cpu, GitBranch, Blocks, Globe, Clock, FileText, Code, Settings, RefreshCw, GitCommit, GitMerge, PauseCircle, Wrench, Database, User, Flag, MessageSquare } from 'lucide-react';
-import { createWorkflow, fetchWorkflow, updateWorkflow, fetchWorkflows } from '../api';
+import { Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, X, Search, Zap, Cpu, GitBranch, Blocks, Globe, Clock, FileText, Code, Settings, RefreshCw, GitCommit, GitMerge, PauseCircle, Wrench, Database, User, Flag, MessageSquare, Play, Info, AlertTriangle, CheckCircle2, Trash } from 'lucide-react';
+import { createWorkflow, fetchWorkflow, updateWorkflow, fetchWorkflows, fetchWorkflowRuns, fetchRunDetails, startTestRun, fetchTemplates, deleteWorkflow } from '../api';
 
 const initialNodes: Node[] = [];
 let idCounter = 0;
@@ -57,7 +57,19 @@ const WorkflowBuilderContent: React.FC = () => {
   // Workspace State
   const [workflows, setWorkflows] = useState<any[]>([]);
 
+  // Templates State
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+
+  // Executions State
+  const [runs, setRuns] = useState<any[]>([]);
+  const [selectedRun, setSelectedRun] = useState<any>(null);
+  const [isTestRunModalOpen, setIsTestRunModalOpen] = useState(false);
+  const [testRunInput, setTestRunInput] = useState<string>('{\n  "message": "Hello"\n}');
+  const [isStartingRun, setIsStartingRun] = useState(false);
+
   const [isImmersive, setIsImmersive] = useState(false);
+
   const [isActiveStatus, setIsActiveStatus] = useState(false);
   const [workflowName, setWorkflowName] = useState("New Workflow Draft");
   const [paletteSearchQuery, setPaletteSearchQuery] = useState("");
@@ -77,11 +89,24 @@ const WorkflowBuilderContent: React.FC = () => {
   useEffect(() => {
     if (id && id !== 'new') {
       loadWorkflow(id);
+      setIsTemplateModalOpen(false);
     } else {
       setNodes(initialNodes);
       setEdges([]);
       setWorkflowName("New Workflow Draft");
       setIsActiveStatus(false);
+      
+      // Load templates and show modal
+      const loadTpls = async () => {
+        try {
+          const data = await fetchTemplates();
+          setTemplates(data);
+          setIsTemplateModalOpen(true);
+        } catch (e) {
+          console.error("Failed to load templates", e);
+        }
+      };
+      loadTpls();
     }
   }, [id]);
 
@@ -171,6 +196,24 @@ const WorkflowBuilderContent: React.FC = () => {
     }
   };
 
+  const handleDeleteWorkflow = async (workflowId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to permanently delete this workflow?')) {
+      try {
+        await deleteWorkflow(workflowId);
+        if (id === workflowId) {
+          navigate('/workflows/new');
+        } else {
+          loadWorkflowsList();
+        }
+      } catch (e) {
+        console.error("Failed to delete workflow", e);
+        alert('Failed to delete workflow');
+      }
+    }
+  };
+
   const loadWorkflow = async (workflowId: string) => {
     try {
       const data = await fetchWorkflow(workflowId);
@@ -183,11 +226,15 @@ const WorkflowBuilderContent: React.FC = () => {
           // Map backend schema to React Flow schema
           const loadedNodes = data.graph_definition.nodes.map((n: any, index: number) => {
             let uiType = n.type;
-            if (n.type === 'agent') uiType = 'agentNode'; // Fallback
-            if (n.type === 'router') uiType = 'routerNode';
-            if (n.type === 'tool') uiType = 'toolNode';
-            
-            if (n.type && n.type.includes('_')) {
+            if (n.type === 'start' || n.type === 'end') {
+                uiType = n.type;
+            } else if (n.type === 'agent') {
+                uiType = 'agentNode'; // Fallback
+            } else if (n.type === 'router') {
+                uiType = 'routerNode';
+            } else if (n.type === 'tool') {
+                uiType = 'toolNode';
+            } else if (n.type && n.type.includes('_')) {
                 uiType = n.type.replace(/_([a-z])/g, (g: string) => g[1].toUpperCase()) + 'Node';
             } else if (n.type && !n.type.endsWith('Node')) {
                 uiType = n.type + 'Node';
@@ -197,7 +244,7 @@ const WorkflowBuilderContent: React.FC = () => {
               id: n.id,
               type: uiType,
               position: n.position || { x: 250 + (index * 200), y: 150 + (index % 2 === 0 ? 0 : 100) },
-              data: { ...n.config }
+              data: { ...n.data, ...n.config }
             };
           });
 
@@ -219,6 +266,54 @@ const WorkflowBuilderContent: React.FC = () => {
     }
   };
 
+  const loadRuns = async () => {
+    if (!id || id === 'new') return;
+    try {
+      const data = await fetchWorkflowRuns(id);
+      setRuns(data);
+    } catch (e) {
+      console.error("Failed to load runs:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'executions' && id && id !== 'new') {
+      loadRuns();
+      const interval = setInterval(loadRuns, 5000); // Poll every 5s while tab is open
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, id]);
+
+  const handleTestRun = async () => {
+    if (!id || id === 'new') return;
+    setIsStartingRun(true);
+    try {
+      let parsedInput = {};
+      try {
+        parsedInput = JSON.parse(testRunInput);
+      } catch (e) {
+        alert("Invalid JSON payload");
+        setIsStartingRun(false);
+        return;
+      }
+      await startTestRun(id, parsedInput);
+      setIsTestRunModalOpen(false);
+      loadRuns();
+    } catch (e: any) {
+      alert("Failed to start test run: " + e.message);
+    } finally {
+      setIsStartingRun(false);
+    }
+  };
+
+  const loadRunDetails = async (runId: string) => {
+    try {
+      const details = await fetchRunDetails(runId);
+      setSelectedRun(details);
+    } catch (e) {
+      console.error("Failed to load run details:", e);
+    }
+  };
 
   const onNodesChange = useCallback(
     (changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -314,7 +409,7 @@ const WorkflowBuilderContent: React.FC = () => {
             id: n.id,
             type: backendType,
             position: n.position,
-            config: { ...n.data }
+            data: { ...n.data }
           };
         }),
         edges: edges.map(e => ({
@@ -413,13 +508,21 @@ const WorkflowBuilderContent: React.FC = () => {
             ) : (
               <div className="space-y-1">
                 {draftedWorkflows.map(w => (
-                  <Link 
-                    key={w.id} 
-                    to={`/workflows/${w.id}`}
-                    className={`block px-2 py-1.5 text-sm rounded-md transition-colors ${id === w.id.toString() ? 'bg-indigo-500/20 text-indigo-300' : 'text-gray-400 hover:bg-white/5'}`}
-                  >
-                    {w.name}
-                  </Link>
+                  <div key={w.id} className={`group flex items-center justify-between px-2 py-1.5 text-sm rounded-md transition-colors ${id === w.id.toString() ? 'bg-indigo-500/20 text-indigo-300' : 'text-gray-400 hover:bg-white/5'}`}>
+                    <Link 
+                      to={`/workflows/${w.id}`}
+                      className="flex-1 truncate"
+                    >
+                      {w.name}
+                    </Link>
+                    <button 
+                      onClick={(e) => handleDeleteWorkflow(w.id.toString(), e)} 
+                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition-all rounded hover:bg-white/10 ml-2 shrink-0"
+                      title="Delete Workflow"
+                    >
+                      <Trash className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -432,13 +535,21 @@ const WorkflowBuilderContent: React.FC = () => {
             ) : (
               <div className="space-y-1">
                 {deployedWorkflows.map(w => (
-                  <Link 
-                    key={w.id} 
-                    to={`/workflows/${w.id}`}
-                    className={`block px-2 py-1.5 text-sm rounded-md transition-colors ${id === w.id.toString() ? 'bg-emerald-500/20 text-emerald-300' : 'text-gray-400 hover:bg-white/5'}`}
-                  >
-                    {w.name}
-                  </Link>
+                  <div key={w.id} className={`group flex items-center justify-between px-2 py-1.5 text-sm rounded-md transition-colors ${id === w.id.toString() ? 'bg-emerald-500/20 text-emerald-300' : 'text-gray-400 hover:bg-white/5'}`}>
+                    <Link 
+                      to={`/workflows/${w.id}`}
+                      className="flex-1 truncate"
+                    >
+                      {w.name}
+                    </Link>
+                    <button 
+                      onClick={(e) => handleDeleteWorkflow(w.id.toString(), e)} 
+                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition-all rounded hover:bg-white/10 ml-2 shrink-0"
+                      title="Delete Workflow"
+                    >
+                      <Trash className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -830,18 +941,270 @@ const WorkflowBuilderContent: React.FC = () => {
 
         
         {activeTab === 'executions' && (
-          <div className="flex-1 flex items-center justify-center pt-16">
-            <div className="text-center">
-              <PlaySquare className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-300">Execution History</h3>
-              <p className="text-sm text-gray-500 mt-2 max-w-md">
-                This tab will display past runs and their outputs for this workflow. 
-                (UI placeholder for now)
-              </p>
+          <div className="flex-1 flex pt-16 bg-gray-950 w-full h-full overflow-hidden">
+            
+            {/* Left Pane: Run History List */}
+            <div className="w-80 border-r border-gray-800 flex flex-col bg-gray-900/50 shrink-0">
+              <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-black/40">
+                <h3 className="text-sm font-semibold text-gray-200 flex items-center">
+                  <PlaySquare className="w-4 h-4 mr-2 text-indigo-400" />
+                  Run History
+                </h3>
+                <button 
+                  onClick={() => setIsTestRunModalOpen(true)}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white p-1.5 rounded transition-colors"
+                  title="Run Now"
+                >
+                  <Play className="w-3 h-3" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                {runs.length === 0 ? (
+                  <p className="text-xs text-gray-500 text-center py-8">No runs recorded yet.</p>
+                ) : (
+                  runs.map(run => (
+                    <div 
+                      key={run.id}
+                      onClick={() => loadRunDetails(run.id)}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                        selectedRun?.id === run.id 
+                          ? 'bg-indigo-900/20 border-indigo-500/50' 
+                          : 'bg-black/20 border-white/5 hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="text-xs font-medium text-gray-300">Run #{run.id}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
+                          run.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                          run.status === 'failed' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                          run.status === 'running' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse' :
+                          'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                        }`}>
+                          {run.status}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-gray-500 mt-2">
+                        <span>{new Date(run.created_at).toLocaleString()}</span>
+                        <span className="bg-white/5 px-1.5 rounded text-gray-400">{run.run_type}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Right Pane: Run Details */}
+            <div className="flex-1 flex flex-col bg-[#0a0a0a] overflow-hidden">
+              {!selectedRun ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
+                  <FileText className="w-12 h-12 mb-3 text-gray-800" />
+                  <p className="text-sm">Select a run from the history to view details</p>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <h2 className="text-xl font-semibold text-white flex items-center">
+                        Run #{selectedRun.id}
+                        {selectedRun.status === 'completed' && <CheckCircle2 className="w-5 h-5 ml-2 text-emerald-500" />}
+                        {selectedRun.status === 'failed' && <AlertTriangle className="w-5 h-5 ml-2 text-red-500" />}
+                      </h2>
+                      <p className="text-xs text-gray-400 mt-1">Started: {new Date(selectedRun.created_at).toLocaleString()}</p>
+                    </div>
+                    <div className="flex space-x-4 bg-black/30 p-2 rounded-lg border border-white/5">
+                      <div className="text-center">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Tokens</p>
+                        <p className="text-sm font-medium text-gray-300">{selectedRun.token_usage || 0}</p>
+                      </div>
+                      <div className="text-center border-l border-white/5 pl-4">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Cost</p>
+                        <p className="text-sm font-medium text-gray-300">${(selectedRun.cost_usd || 0).toFixed(4)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="bg-gray-900 border border-white/5 rounded-xl p-4">
+                      <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Input</h4>
+                      <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-auto max-h-40 custom-scrollbar">
+                        {selectedRun.input_data ? JSON.stringify(selectedRun.input_data, null, 2) : selectedRun.input_text}
+                      </pre>
+                    </div>
+                    <div className="bg-gray-900 border border-white/5 rounded-xl p-4">
+                      <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Output</h4>
+                      <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-auto max-h-40 custom-scrollbar">
+                        {selectedRun.output_data ? JSON.stringify(selectedRun.output_data, null, 2) : (selectedRun.output_text || 'No output')}
+                      </pre>
+                    </div>
+                  </div>
+
+                  <h4 className="text-sm font-semibold text-gray-200 mb-3 flex items-center">
+                    <Code className="w-4 h-4 mr-2 text-gray-400" /> Execution Logs
+                  </h4>
+                  <div className="bg-black/50 border border-gray-800 rounded-xl overflow-hidden">
+                    {(!selectedRun.logs || selectedRun.logs.length === 0) ? (
+                      <p className="text-xs text-gray-500 p-4">No logs available for this run.</p>
+                    ) : (
+                      <div className="divide-y divide-gray-800/50">
+                        {selectedRun.logs.map((log: any) => (
+                          <div key={log.id} className="p-3 hover:bg-white/5 transition-colors">
+                            <div className="flex items-center space-x-3 mb-1">
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                                log.level === 'error' ? 'bg-red-500/20 text-red-400' :
+                                log.level === 'warning' ? 'bg-amber-500/20 text-amber-400' :
+                                'bg-blue-500/20 text-blue-400'
+                              }`}>
+                                {log.level.toUpperCase()}
+                              </span>
+                              <span className="text-[10px] text-gray-500 font-mono">
+                                {new Date(log.created_at).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-300 mt-1">{log.message}</p>
+                            {log.details && (
+                              <pre className="mt-2 text-[10px] text-gray-400 bg-black/40 p-2 rounded border border-white/5 overflow-x-auto">
+                                {JSON.stringify(log.details, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
+
+      {/* Test Run Modal */}
+      {isTestRunModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-gray-800 rounded-xl w-[500px] shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-black/40">
+              <h3 className="text-lg font-medium text-white flex items-center">
+                <Play className="w-4 h-4 mr-2 text-indigo-400" /> Test Run
+              </h3>
+              <button onClick={() => setIsTestRunModalOpen(false)} className="text-gray-400 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-400 mb-4">
+                Trigger a test run manually. Provide the JSON input payload below that will be passed into the workflow.
+              </p>
+              <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Input Payload (JSON)</label>
+              <textarea
+                value={testRunInput}
+                onChange={(e) => setTestRunInput(e.target.value)}
+                className="w-full h-48 bg-black/50 border border-gray-700 rounded-lg p-3 text-xs text-gray-300 font-mono focus:ring-1 focus:ring-indigo-500 outline-none custom-scrollbar"
+                spellCheck={false}
+              />
+            </div>
+            <div className="p-4 border-t border-gray-800 bg-black/40 flex justify-end space-x-3">
+              <button 
+                onClick={() => setIsTestRunModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleTestRun}
+                disabled={isStartingRun}
+                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
+              >
+                {isStartingRun ? 'Starting...' : 'Start Run'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Template Modal */}
+      {isTemplateModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-gray-800 rounded-xl w-[800px] shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-gray-800 bg-black/40">
+              <div>
+                <h3 className="text-xl font-bold text-white flex items-center">
+                  <WorkflowIcon className="w-5 h-5 mr-3 text-indigo-400" /> Choose a Template
+                </h3>
+                <p className="text-sm text-gray-400 mt-1">Start from scratch or pick a pre-configured workflow.</p>
+              </div>
+              <button onClick={() => setIsTemplateModalOpen(false)} className="text-gray-500 hover:text-white transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              <div 
+                onClick={() => setIsTemplateModalOpen(false)}
+                className="bg-black/40 border-2 border-dashed border-gray-700 hover:border-indigo-500 rounded-xl p-6 cursor-pointer transition-all flex flex-col items-center justify-center text-center group h-40"
+              >
+                <Plus className="w-8 h-8 text-gray-500 group-hover:text-indigo-400 mb-3 transition-colors" />
+                <h4 className="text-sm font-semibold text-gray-200">Blank Workflow</h4>
+                <p className="text-xs text-gray-500 mt-1">Start completely from scratch</p>
+              </div>
+              
+              {templates.map(tpl => (
+                <div 
+                  key={tpl.id}
+                  onClick={() => {
+                    setWorkflowName(tpl.name);
+                    if (tpl.graph_definition) {
+                      const loadedNodes = tpl.graph_definition.nodes.map((n: any, index: number) => {
+                        let uiType = n.type;
+                        if (n.type === 'start' || n.type === 'end') {
+                            uiType = n.type;
+                        } else if (n.type === 'agent') {
+                            uiType = 'agentNode';
+                        } else if (n.type === 'router') {
+                            uiType = 'routerNode';
+                        } else if (n.type === 'tool') {
+                            uiType = 'toolNode';
+                        } else if (n.type && n.type.includes('_')) {
+                            uiType = n.type.replace(/_([a-z])/g, (g: string) => g[1].toUpperCase()) + 'Node';
+                        } else if (n.type && !n.type.endsWith('Node')) {
+                            uiType = n.type + 'Node';
+                        }
+                        
+                        return {
+                          id: n.id,
+                          type: uiType,
+                          position: n.position || { x: 250 + (index * 200), y: 150 + (index % 2 === 0 ? 0 : 100) },
+                          data: { ...n.data, ...n.config }
+                        };
+                      });
+
+                      const loadedEdges = tpl.graph_definition.edges.map((e: any, index: number) => ({
+                        id: `e${index}-${e.source}-${e.target}`,
+                        source: e.source,
+                        target: e.target,
+                        label: e.condition || '',
+                        animated: true,
+                        style: { stroke: '#8b5cf6' }
+                      }));
+                      setNodes(loadedNodes);
+                      setEdges(loadedEdges);
+                    }
+                    setIsTemplateModalOpen(false);
+                  }}
+                  className="bg-gray-800/50 border border-gray-700 hover:border-indigo-500 rounded-xl p-6 cursor-pointer transition-all flex flex-col group h-40"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="text-sm font-semibold text-gray-200 group-hover:text-indigo-400 transition-colors">{tpl.name}</h4>
+                    <Zap className="w-4 h-4 text-emerald-400 opacity-50 group-hover:opacity-100" />
+                  </div>
+                  <p className="text-xs text-gray-400 line-clamp-3">{tpl.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

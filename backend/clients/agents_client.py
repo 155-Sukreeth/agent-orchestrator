@@ -1,5 +1,6 @@
 import httpx
 from backend.config.settings import settings
+from backend.schemas.agent_run_payload import AgentRunPayload
 import logging
 
 logger = logging.getLogger(__name__)
@@ -8,18 +9,14 @@ class AgentsClient:
     def __init__(self):
         self.base_url = settings.AGENTS_API_URL
 
-    async def compile_and_run(self, run_id: str, workflow_config: dict, input_data: str) -> bool:
+    async def compile_and_run(self, payload: "AgentRunPayload") -> bool:
         """Triggers the execution of a workflow in the Agents microservice."""
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{self.base_url}/compile_and_run",
-                    json={
-                        "run_id": run_id,
-                        "workflow_config": workflow_config,
-                        "input_data": input_data
-                    },
-                    timeout=5.0
+                    json=payload.model_dump(),
+                    timeout=5.0,
                 )
                 response.raise_for_status()
                 return True

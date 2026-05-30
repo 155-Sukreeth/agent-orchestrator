@@ -27,7 +27,11 @@ class SemanticRouterService:
 
         try:
             llm_config = llm_params_registry.SEMANTIC_ROUTER
-            provider, model = llm_config.primary_model.split("/")
+            try:
+                provider, model = llm_config.primary_model.split("/", 1)
+            except ValueError:
+                provider, model = llm_params_registry.SEMANTIC_ROUTER.primary_model.split("/", 1)
+            
             resolved_model = bifrost_client.resolve_model(provider, model)
             
             extra_body = {}

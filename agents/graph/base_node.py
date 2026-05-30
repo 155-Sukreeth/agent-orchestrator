@@ -1,6 +1,6 @@
 import abc
 from typing import Dict, Any, Optional
-from langgraph.types import StreamWriter, get_stream_writer
+from langgraph.types import StreamWriter
 
 class BaseNode(abc.ABC):
     """
@@ -39,15 +39,15 @@ class BaseNode(abc.ABC):
         The external graph runner will capture these and push to Redis/DB.
         """
         try:
+            from langgraph.types import get_stream_writer
             writer: StreamWriter = get_stream_writer()
             writer({
                 "type": event_type, 
                 "node_id": self.node_id, 
                 "payload": payload
             })
-        except RuntimeError:
-            # get_stream_writer raises RuntimeError if called outside of an active stream context
-            # e.g., if we run the graph synchronously or outside .astream_events()
+        except Exception:
+            # get_stream_writer raises RuntimeError or ImportError
             pass
 
     def handle_error(self, error: Exception):

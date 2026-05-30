@@ -53,3 +53,13 @@ class WorkflowResponse(WorkflowBase):
     triggers: List[WorkflowTriggerResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+class DefaultWorkflowTemplateResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    graph_definition: Dict[str, Any]
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+

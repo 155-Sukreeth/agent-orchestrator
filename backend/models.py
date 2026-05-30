@@ -128,6 +128,7 @@ class Run(Base):
     id = Column(Integer, primary_key=True, index=True)
     workflow_id = Column(Integer, ForeignKey("workflows.id"))
     trigger_id = Column(UUID(as_uuid=True), ForeignKey("workflow_triggers.id", ondelete="SET NULL"), nullable=True)
+    run_type = Column(String(50), default="test", index=True) # test, webhook, scheduler, semantic
     sender_id = Column(String, index=True)
     thread_id = Column(String, index=True)
     input_text = Column(String)
@@ -154,6 +155,13 @@ class RunLog(Base):
     payload = Column(JSON)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     run = relationship("Run", back_populates="logs")
+
+    @property
+    def level(self): return self.event_type
+    @property
+    def message(self): return self.node_id
+    @property
+    def details(self): return self.payload
 
 class Message(Base):
     __tablename__ = "messages"
