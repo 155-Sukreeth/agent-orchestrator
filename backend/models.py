@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, Boolean, JSON, DateTime, Float, 
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 from backend.database import Base
 from backend.config.settings import settings
 from cryptography.fernet import Fernet
@@ -98,11 +100,34 @@ class Workflow(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     runs = relationship("Run", back_populates="workflow")
+    triggers = relationship("WorkflowTrigger", back_populates="workflow", cascade="all, delete-orphan")
+
+class DefaultWorkflowTemplate(Base):
+    __tablename__ = "default_workflow_templates"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    description = Column(String)
+    graph_definition = Column(JSON, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class WorkflowTrigger(Base):
+    __tablename__ = "workflow_triggers"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workflow_id = Column(Integer, ForeignKey("workflows.id", ondelete="CASCADE"), nullable=False)
+    type = Column(String(50), nullable=False, index=True) # "semantic"|"webhook"|"scheduler"
+    enabled = Column(Boolean, default=True, index=True)
+    config = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    workflow = relationship("Workflow", back_populates="triggers")
 
 class Run(Base):
     __tablename__ = "runs"
     id = Column(Integer, primary_key=True, index=True)
     workflow_id = Column(Integer, ForeignKey("workflows.id"))
+    trigger_id = Column(UUID(as_uuid=True), ForeignKey("workflow_triggers.id", ondelete="SET NULL"), nullable=True)
     sender_id = Column(String, index=True)
     thread_id = Column(String, index=True)
     input_text = Column(String)

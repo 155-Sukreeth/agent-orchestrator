@@ -9,9 +9,10 @@ interface NodeConfigSidebarProps {
   onClose: () => void;
   onUpdate: (id: string, data: any) => void;
   onDelete?: (id: string) => void;
+  onOpenTriggers?: () => void;
 }
 
-const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [], edges = [], onClose, onUpdate, onDelete }) => {
+const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [], edges = [], onClose, onUpdate, onDelete, onOpenTriggers }) => {
   const [formData, setFormData] = useState<any>(node?.data || {});
   
   const [activeTools, setActiveTools] = useState<any[]>([]);
@@ -823,6 +824,24 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
         </div>
 
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-800 to-transparent mb-6"></div>
+
+        {node.type === 'startNode' && onOpenTriggers && (
+          <div className="mb-6 p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl shadow-inner">
+            <h4 className="text-sm font-semibold text-purple-400 mb-2 flex items-center">
+              <Zap className="w-4 h-4 mr-2" />
+              Workflow Triggers
+            </h4>
+            <p className="text-xs text-gray-400 mb-4">
+              Configure how this workflow can be executed (e.g. via Semantic Router, Webhooks, or Scheduler).
+            </p>
+            <button
+              onClick={onOpenTriggers}
+              className="w-full bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-xs font-medium transition-all shadow-[0_0_10px_rgba(147,51,234,0.3)] flex items-center justify-center"
+            >
+              Configure Triggers
+            </button>
+          </div>
+        )}
 
         {node.type.includes('Trigger') && renderTriggerFields()}
         {(node.type === 'agentNode' || node.type === 'structuredOutputNode' || node.type === 'promptBuilderNode' || node.type === 'stateTransformNode') && renderTransformFields()}

@@ -27,7 +27,51 @@ class WorkflowService:
         db_workflow = await workflow_repository.get_by_id(db, workflow_id)
         if not db_workflow:
             raise ValueError(f"Workflow {workflow_id} not found")
-        updated_workflow = await workflow_repository.update(db, db_workflow, workflow_in.model_dump(exclude_unset=True))
+            
+        update_data = workflow_in.model_dump(exclude_unset=True)
+        triggers_data = update_data.pop("triggers", None)
+        
+        # Update workflow base fields
+        updated_workflow = await workflow_repository.update(db, db_workflow, update_data)
+        
+        # Handle triggers upsert
+        if triggers_data is not None:
+            from backend.models import WorkflowTrigger
+            from sqlalchemy.future import select
+            
+            # Get existing triggers
+            result = await db.execute(select(WorkflowTrigger).where(WorkflowTrigger.workflow_id == workflow_id))
+            existing_triggers = {str(t.id): t for t in result.scalars().all()}
+            
+            incoming_ids = set()
+            
+            for t_data in triggers_data:
+                t_id = t_data.get("id")
+                if t_id and str(t_id) in existing_triggers:
+                    # Update
+                    t_obj = existing_triggers[str(t_id)]
+                    for k, v in t_data.items():
+                        if k != "id" and v is not None:
+                            setattr(t_obj, k, v)
+                    incoming_ids.add(str(t_id))
+                else:
+                    # Insert
+                    new_t = WorkflowTrigger(
+                        workflow_id=workflow_id,
+                        type=t_data["type"],
+                        enabled=t_data.get("enabled", True),
+                        config=t_data.get("config", {})
+                    )
+                    db.add(new_t)
+                    
+            # Delete triggers not in the incoming list
+            for ext_id, t_obj in existing_triggers.items():
+                if ext_id not in incoming_ids:
+                    await db.delete(t_obj)
+                    
+            await db.commit()
+            await db.refresh(updated_workflow)
+            
         return WorkflowResponse.model_validate(updated_workflow)
 
 workflow_service = WorkflowService()
