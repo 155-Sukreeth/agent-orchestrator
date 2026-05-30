@@ -1,27 +1,31 @@
 import logging
 from agents.graph.builder import compile_graph
 from agents.clients.redis_client import get_redis_client
+from agents.clients.http_client import with_resiliency
 
 logger = logging.getLogger(__name__)
 
 class CompilerService:
+    @with_resiliency()
     async def _update_backend_status(self, run_id: str, status: str, output_text: str = None, output_data: dict = None, logs: list = None):
         import httpx
         from agents.config.settings import agent_settings
+        from agents.clients.http_client import HttpClientManager
         try:
-            async with httpx.AsyncClient() as client:
-                await client.patch(
-                    f"{agent_settings.BACKEND_API_URL}/runs/{run_id}",
-                    json={
-                        "status": status,
-                        "output_text": output_text,
-                        "output_data": output_data,
-                        "logs": logs or []
-                    },
-                    timeout=5.0
-                )
+            client = HttpClientManager.get_client()
+            await client.patch(
+                f"{agent_settings.BACKEND_API_URL}/runs/{run_id}",
+                json={
+                    "status": status,
+                    "output_text": output_text,
+                    "output_data": output_data,
+                    "logs": logs or []
+                },
+                timeout=5.0
+            )
         except Exception as e:
             logger.error(f"Failed to sync status to backend: {e}")
+            raise e
 
     async def execute_graph_and_log(
         self,

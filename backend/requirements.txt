@@ -17,3 +17,6 @@ python-docx
 aiofiles
 fastmcp
 cryptography
+
+tenacity
+pybreaker

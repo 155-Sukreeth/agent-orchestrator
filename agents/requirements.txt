@@ -8,3 +8,6 @@ openai
 langgraph
 langchain-core
 jinja2
+
+tenacity
+pybreaker

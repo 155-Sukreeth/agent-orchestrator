@@ -1,6 +1,7 @@
 import httpx
 from backend.adaptors.base import BaseAdaptor
 from backend.config.settings import settings
+from backend.clients.http_client import HttpClientManager, with_resiliency
 
 class TelegramAdaptor(BaseAdaptor):
     async def parse_payload(self, request_body: dict) -> dict:
@@ -14,11 +15,12 @@ class TelegramAdaptor(BaseAdaptor):
             "text": text
         }
 
+    @with_resiliency()
     async def send_message(self, sender_id: str, thread_id: str, text: str):
         url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
         payload = {
             "chat_id": sender_id,
             "text": text
         }
-        async with httpx.AsyncClient() as client:
-            await client.post(url, json=payload)
+        client = HttpClientManager.get_client()
+        await client.post(url, json=payload)

@@ -12,12 +12,17 @@ from backend.routers.ws import router as ws_router
 from backend.routers.integrations import router as integrations_router
 from backend.routers.files import router as files_router
 from backend.routers.connections import router as connections_router
+from backend.routers.notifications import router as notifications_router
+
+from backend.clients.http_client import HttpClientManager
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    HttpClientManager.start()
     yield
+    await HttpClientManager.stop()
     await engine.dispose()
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,6 +45,7 @@ app.include_router(ws_router)
 app.include_router(integrations_router, prefix="/api/integrations")
 app.include_router(files_router, prefix="/api/files")
 app.include_router(connections_router, prefix="/api/connections")
+app.include_router(notifications_router)
 
 @app.get("/health")
 def health():
