@@ -10,14 +10,10 @@ import ReactFlow, {
 } from 'reactflow';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import 'reactflow/dist/style.css';
-import AgentNode from '../components/nodes/AgentNode';
-import RouterNode from '../components/nodes/RouterNode';
-import ToolNode from '../components/nodes/ToolNode';
-import UserMessageNode from '../components/nodes/UserMessageNode';
-import LLMNode from '../components/nodes/LLMNode';
-import ReActAgentNode from '../components/nodes/ReActAgentNode';
-import KnowledgeNode from '../components/nodes/KnowledgeNode';
-import HumanPauseNode from '../components/nodes/HumanPauseNode';
+import { SemanticTriggerNode, WebhookTriggerNode, SchedulerTriggerNode, WorkflowEventTriggerNode } from '../components/nodes/trigger/TriggerNodes';
+import { AgentNode, PromptBuilderNode, StructuredOutputNode, StateTransformNode } from '../components/nodes/transform/TransformNodes';
+import { RouterNode, LoopNode, ParallelSplitNode, MergeNode, HumanPauseNode } from '../components/nodes/control/ControlNodes';
+import { ToolNode, KnowledgeNode } from '../components/nodes/integrate/IntegrateNodes';
 import NodeConfigSidebar from '../components/NodeConfigSidebar';
 import { Network, Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, ChevronRight } from 'lucide-react';
 import { createWorkflow, fetchWorkflow, updateWorkflow, fetchWorkflows } from '../api';
@@ -57,6 +53,16 @@ const WorkflowBuilderContent: React.FC = () => {
       setIsActiveStatus(false);
     }
   }, [id]);
+
+  // Toggle immersive mode class on body for global Layout styles
+  useEffect(() => {
+    if (isImmersive) {
+      document.body.classList.add('immersive-mode');
+    } else {
+      document.body.classList.remove('immersive-mode');
+    }
+    return () => document.body.classList.remove('immersive-mode');
+  }, [isImmersive]);
 
   // Auto-save drafts every 15 seconds if there are nodes and it's not active
   useEffect(() => {
@@ -120,14 +126,21 @@ const WorkflowBuilderContent: React.FC = () => {
   };
 
   const nodeTypes = useMemo(() => ({ 
-    agentNode: AgentNode, // Legacy fallback
+    semanticTriggerNode: SemanticTriggerNode,
+    webhookTriggerNode: WebhookTriggerNode,
+    schedulerTriggerNode: SchedulerTriggerNode,
+    workflowEventTriggerNode: WorkflowEventTriggerNode,
+    agentNode: AgentNode,
+    promptBuilderNode: PromptBuilderNode,
+    structuredOutputNode: StructuredOutputNode,
+    stateTransformNode: StateTransformNode,
     routerNode: RouterNode,
+    loopNode: LoopNode,
+    parallelSplitNode: ParallelSplitNode,
+    mergeNode: MergeNode,
+    humanPauseNode: HumanPauseNode,
     toolNode: ToolNode,
-    userMessageNode: UserMessageNode,
-    llmNode: LLMNode,
-    reactAgentNode: ReActAgentNode,
-    knowledgeNode: KnowledgeNode,
-    humanPauseNode: HumanPauseNode
+    knowledgeNode: KnowledgeNode
   }), []);
 
   const onNodesChange = useCallback(
@@ -401,38 +414,59 @@ const WorkflowBuilderContent: React.FC = () => {
             </ReactFlow>
 
             {/* Categorized Node Palette (Floating Left) */}
-            <div className={`absolute top-24 left-4 flex flex-col space-y-4 w-48 transition-opacity duration-300 ${isImmersive ? 'opacity-50 hover:opacity-100' : 'opacity-100'}`}>
+            <div className={`absolute top-24 left-4 bottom-24 overflow-y-auto pr-2 custom-scrollbar flex flex-col space-y-4 w-56 transition-opacity duration-300 ${isImmersive ? 'opacity-30 hover:opacity-100' : 'opacity-100'}`}>
               
+              {/* Trigger Group */}
               <div className="glass-card rounded-xl border border-white/10 overflow-hidden shadow-xl">
-                <div className="bg-white/5 px-3 py-2 border-b border-white/5 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Legacy / Core
+                <div className="bg-purple-900/40 px-3 py-2 border-b border-purple-500/20 text-xs font-semibold text-purple-300 uppercase tracking-wider flex items-center">
+                  Trigger
                 </div>
-                <div className="p-2 space-y-1">
-                  <button onClick={() => handleAddNode('userMessageNode', 'Input')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors flex items-center">
-                    <span className="w-2 h-2 rounded-full bg-purple-500 mr-2" /> Input
-                  </button>
-                  <button onClick={() => handleAddNode('llmNode', 'LLM')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors flex items-center">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 mr-2" /> LLM
-                  </button>
-                  <button onClick={() => handleAddNode('reactAgentNode', 'ReAct Agent')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors flex items-center">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2" /> ReAct Agent
-                  </button>
-                  <button onClick={() => handleAddNode('routerNode', 'Router')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors flex items-center">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 mr-2" /> Router
-                  </button>
-                  <button onClick={() => handleAddNode('knowledgeNode', 'Knowledge')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors flex items-center">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500 mr-2" /> Knowledge
-                  </button>
-                  <button onClick={() => handleAddNode('toolNode', 'Tool')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors flex items-center">
-                    <span className="w-2 h-2 rounded-full bg-cyan-500 mr-2" /> Tool
-                  </button>
-                  <button onClick={() => handleAddNode('humanPauseNode', 'Human Pause')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors flex items-center">
-                    <span className="w-2 h-2 rounded-full bg-orange-500 mr-2" /> Human Pause
-                  </button>
+                <div className="p-2 grid grid-cols-2 gap-1">
+                  <button onClick={() => handleAddNode('semanticTriggerNode', 'Semantic')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Semantic</button>
+                  <button onClick={() => handleAddNode('webhookTriggerNode', 'Webhook')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Webhook</button>
+                  <button onClick={() => handleAddNode('schedulerTriggerNode', 'Scheduler')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Scheduler</button>
+                  <button onClick={() => handleAddNode('workflowEventTriggerNode', 'Wf Event')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Wf Event</button>
+                </div>
+              </div>
+
+              {/* Transform Group */}
+              <div className="glass-card rounded-xl border border-white/10 overflow-hidden shadow-xl">
+                <div className="bg-blue-900/40 px-3 py-2 border-b border-blue-500/20 text-xs font-semibold text-blue-300 uppercase tracking-wider flex items-center">
+                  Transform
+                </div>
+                <div className="p-2 flex flex-col gap-1">
+                  <button onClick={() => handleAddNode('agentNode', 'Agent')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors border border-transparent hover:border-white/5 bg-black/20">Agent</button>
+                  <button onClick={() => handleAddNode('promptBuilderNode', 'Prompt Builder')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors border border-transparent hover:border-white/5 bg-black/20">Prompt Builder</button>
+                  <button onClick={() => handleAddNode('structuredOutputNode', 'Structured Output')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors border border-transparent hover:border-white/5 bg-black/20">Structured Output</button>
+                  <button onClick={() => handleAddNode('stateTransformNode', 'State Transform')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors border border-transparent hover:border-white/5 bg-black/20">State Transform</button>
+                </div>
+              </div>
+
+              {/* Control Group */}
+              <div className="glass-card rounded-xl border border-white/10 overflow-hidden shadow-xl">
+                <div className="bg-amber-900/40 px-3 py-2 border-b border-amber-500/20 text-xs font-semibold text-amber-300 uppercase tracking-wider flex items-center">
+                  Control
+                </div>
+                <div className="p-2 grid grid-cols-2 gap-1">
+                  <button onClick={() => handleAddNode('routerNode', 'Router')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Router</button>
+                  <button onClick={() => handleAddNode('loopNode', 'Loop')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Loop</button>
+                  <button onClick={() => handleAddNode('parallelSplitNode', 'Split')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Split</button>
+                  <button onClick={() => handleAddNode('mergeNode', 'Merge')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Merge</button>
+                  <button onClick={() => handleAddNode('humanPauseNode', 'Pause')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center col-span-2 border border-transparent hover:border-white/5 bg-black/20">Human Pause</button>
+                </div>
+              </div>
+
+              {/* Integrate Group */}
+              <div className="glass-card rounded-xl border border-white/10 overflow-hidden shadow-xl">
+                <div className="bg-emerald-900/40 px-3 py-2 border-b border-emerald-500/20 text-xs font-semibold text-emerald-300 uppercase tracking-wider flex items-center">
+                  Integrate
+                </div>
+                <div className="p-2 flex flex-col gap-1">
+                  <button onClick={() => handleAddNode('toolNode', 'Tool')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors border border-transparent hover:border-white/5 bg-black/20">Tool</button>
+                  <button onClick={() => handleAddNode('knowledgeNode', 'Knowledge')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors border border-transparent hover:border-white/5 bg-black/20">Knowledge</button>
                 </div>
               </div>
               
-              {/* Note: New categories will be added here in Phase 2 */}
             </div>
 
             {selectedNode && (
