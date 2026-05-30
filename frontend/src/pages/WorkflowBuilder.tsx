@@ -40,6 +40,9 @@ const WorkflowBuilderContent: React.FC = () => {
   const [isNodePalettePinned, setIsNodePalettePinned] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(256);
   const isResizingLeft = useRef(false);
+  
+  const [workspacePanelWidth, setWorkspacePanelWidth] = useState(256);
+  const isResizingWorkspace = useRef(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -92,6 +95,36 @@ const WorkflowBuilderContent: React.FC = () => {
     const handleMouseUp = () => {
       if (isResizingLeft.current) {
         isResizingLeft.current = false;
+        document.body.style.cursor = 'default';
+        document.body.style.userSelect = 'auto';
+      }
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  // Handle Workspace Panel Resizing
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingWorkspace.current) return;
+      setWorkspacePanelWidth(prev => {
+        const newWidth = prev + e.movementX;
+        return Math.min(Math.max(newWidth, 200), 600);
+      });
+    };
+    const handleMouseUp = () => {
+      if (isResizingWorkspace.current) {
+        isResizingWorkspace.current = false;
         document.body.style.cursor = 'default';
         document.body.style.userSelect = 'auto';
       }
@@ -316,10 +349,18 @@ const WorkflowBuilderContent: React.FC = () => {
     <div className="h-full w-full flex bg-gray-950 text-gray-200 overflow-hidden">
       {/* Left Pane: Workspace Navigator */}
       <div 
-        className={`w-64 border-r border-white/5 bg-gray-950/50 flex flex-col shrink-0 transition-all duration-300 ease-in-out z-20 ${
-          isImmersive ? '-ml-64' : 'ml-0'
-        }`}
+        style={{ 
+          width: isImmersive ? undefined : workspacePanelWidth, 
+          marginLeft: isImmersive ? -workspacePanelWidth : 0 
+        }}
+        className={`relative border-r border-white/5 bg-gray-950/50 flex flex-col shrink-0 transition-all duration-300 ease-in-out z-20`}
       >
+        {/* Resize Handle */}
+        <div 
+          className="absolute right-0 top-0 bottom-0 w-2 translate-x-1/2 cursor-col-resize hover:bg-indigo-500/50 z-50 transition-colors"
+          onMouseDown={(e) => { e.preventDefault(); isResizingWorkspace.current = true; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; }}
+        />
+
         <div className="p-4 border-b border-white/5 flex items-center justify-between">
           <h2 className="font-semibold text-gray-200 flex items-center">
             <WorkflowIcon className="w-4 h-4 mr-2 text-indigo-400" />

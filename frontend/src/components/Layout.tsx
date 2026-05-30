@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Bot, Network, ActivitySquare, LayoutDashboard, Database, Link as LinkIcon } from 'lucide-react';
 
@@ -11,11 +11,47 @@ const Layout: React.FC = () => {
     { name: 'Monitor', icon: ActivitySquare, path: '/monitor' },
   ];
 
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const isResizing = useRef(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      setSidebarWidth(prev => {
+        const newWidth = prev + e.movementX;
+        return Math.min(Math.max(newWidth, 150), 400);
+      });
+    };
+    const handleMouseUp = () => {
+      if (isResizing.current) {
+        isResizing.current = false;
+        document.body.style.cursor = 'default';
+        document.body.style.userSelect = 'auto';
+      }
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   return (
     <div className="flex h-screen bg-gray-950 overflow-hidden text-gray-100">
       {/* Sidebar */}
-      <aside id="global-sidebar" className="w-64 flex flex-col border-r border-white/10 glass z-20 transition-all duration-300 ease-in-out">
-        <div className="h-16 flex items-center px-6 border-b border-white/5">
+      <aside 
+        id="global-sidebar" 
+        style={{ width: sidebarWidth }}
+        className="relative flex flex-col border-r border-white/10 glass z-20 transition-all duration-300 ease-in-out shrink-0"
+      >
+        {/* Resize Handle */}
+        <div 
+          className="absolute right-0 top-0 bottom-0 w-2 translate-x-1/2 cursor-col-resize hover:bg-indigo-500/50 z-50 transition-colors"
+          onMouseDown={(e) => { e.preventDefault(); isResizing.current = true; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; }}
+        />
+        
+        <div className="h-16 flex items-center px-6 border-b border-white/5 shrink-0">
           <LayoutDashboard className="w-6 h-6 text-indigo-500 mr-3" />
           <h1 className="text-xl font-semibold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
             Orchestrator

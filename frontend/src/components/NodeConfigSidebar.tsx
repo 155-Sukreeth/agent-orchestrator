@@ -119,6 +119,20 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
     </div>
   );
 
+  const groupedTools = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    const filtered = toolSearchQuery 
+      ? activeTools.filter(t => t.name.toLowerCase().includes(toolSearchQuery.toLowerCase()))
+      : activeTools;
+      
+    filtered.forEach(tool => {
+      const groupName = tool.integration_name || 'Global Tools';
+      if (!groups[groupName]) groups[groupName] = [];
+      groups[groupName].push(tool);
+    });
+    return groups;
+  }, [activeTools, toolSearchQuery]);
+
   const renderToolSelection = (prefix: string = '') => {
     const accessKey = prefix ? `${prefix}_tools_access` : 'tools_access';
     const listKey = prefix ? `${prefix}_tools_list` : 'tools_list';
@@ -126,20 +140,6 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
     const defaultAccess = node.type === 'toolNode' ? 'custom' : 'all';
     const access = formData[accessKey] || defaultAccess;
     const selectedTools = formData[listKey] || [];
-
-    const groupedTools = useMemo(() => {
-      const groups: Record<string, any[]> = {};
-      const filtered = toolSearchQuery 
-        ? activeTools.filter(t => t.name.toLowerCase().includes(toolSearchQuery.toLowerCase()))
-        : activeTools;
-        
-      filtered.forEach(tool => {
-        const groupName = tool.integration_name || 'Global Tools';
-        if (!groups[groupName]) groups[groupName] = [];
-        groups[groupName].push(tool);
-      });
-      return groups;
-    }, [activeTools, toolSearchQuery]);
 
     return (
       <div className="mb-6 mt-4">
