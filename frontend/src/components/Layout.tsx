@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Bot, Network, ActivitySquare, LayoutDashboard, Database, Link as LinkIcon } from 'lucide-react';
+import { Bot, Network, ActivitySquare, LayoutDashboard, Database, Link as LinkIcon, User, LogOut } from 'lucide-react';
 
 const Layout: React.FC = () => {
   const navItems = [
@@ -83,10 +83,35 @@ const Layout: React.FC = () => {
             </NavLink>
           ))}
         </nav>
+        
+        {/* Profile Section */}
+        <div className="p-4 border-t border-white/10 shrink-0 bg-black/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3 overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30 shrink-0">
+                <User className="w-4 h-4 text-indigo-400" />
+              </div>
+              <div className="truncate">
+                <p className="text-sm font-medium text-gray-200 truncate">Admin User</p>
+                <p className="text-[10px] text-gray-500 truncate">Workspace Owner</p>
+              </div>
+            </div>
+            <button className="p-2 text-gray-500 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors" title="Logout">
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 relative flex flex-col min-w-0 overflow-hidden">
+        {/* Universal Top Right Profile Button */}
+        <div className="absolute top-4 right-6 z-50">
+          <button className="w-9 h-9 rounded-full bg-gray-900/80 backdrop-blur-md flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors shadow-lg" title="Profile">
+            <User className="w-4 h-4 text-gray-300" />
+          </button>
+        </div>
+
         <div className="flex-1 overflow-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-gray-950">
           <Outlet />
         </div>

@@ -15,7 +15,7 @@ import { AgentNode, PromptBuilderNode, StructuredOutputNode, StateTransformNode 
 import { RouterNode, LoopNode, ParallelSplitNode, MergeNode, HumanPauseNode } from '../components/nodes/control/ControlNodes';
 import { ToolNode, KnowledgeNode } from '../components/nodes/integrate/IntegrateNodes';
 import NodeConfigSidebar from '../components/NodeConfigSidebar';
-import { Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, X, Search, Zap, Cpu, GitBranch, Blocks, MessageSquare, Globe, Clock, FileText, Code, Settings, RefreshCw, GitCommit, GitMerge, PauseCircle, Wrench, Database, Pin, PinOff } from 'lucide-react';
+import { Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, X, Search, Zap, Cpu, GitBranch, Blocks, MessageSquare, Globe, Clock, FileText, Code, Settings, RefreshCw, GitCommit, GitMerge, PauseCircle, Wrench, Database, Pin, PinOff, User } from 'lucide-react';
 import { createWorkflow, fetchWorkflow, updateWorkflow, fetchWorkflows } from '../api';
 
 const initialNodes: Node[] = [];
@@ -508,6 +508,9 @@ const WorkflowBuilderContent: React.FC = () => {
               title="Enter Immersive Mode"
             >
               <Maximize className="w-4 h-4" />
+            </button>
+            <button className="w-9 h-9 ml-2 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors shrink-0 shadow-lg" title="Profile">
+              <User className="w-4 h-4 text-indigo-400" />
             </button>
           </div>
         </div>
