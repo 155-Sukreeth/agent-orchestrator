@@ -246,9 +246,11 @@ const WorkflowBuilderContent: React.FC = () => {
       type,
       position: center,
       data: { label },
+      selected: true,
     };
 
-    setNodes((nds) => nds.concat(newNode));
+    setNodes((nds) => nds.map(n => ({ ...n, selected: false })).concat(newNode));
+    setSelectedNodeId(newNode.id);
   };
 
   const handleNodeClick = (_: React.MouseEvent, node: Node) => {
