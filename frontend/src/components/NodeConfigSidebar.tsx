@@ -8,9 +8,10 @@ interface NodeConfigSidebarProps {
   edges?: any[];
   onClose: () => void;
   onUpdate: (id: string, data: any) => void;
+  onDelete?: (id: string) => void;
 }
 
-const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [], edges = [], onClose, onUpdate }) => {
+const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [], edges = [], onClose, onUpdate, onDelete }) => {
   const [formData, setFormData] = useState<any>(node?.data || {});
   
   const [activeTools, setActiveTools] = useState<any[]>([]);
@@ -757,7 +758,7 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
         
       </div>
 
-      <div className="p-4 border-t border-gray-800 bg-black/40 backdrop-blur-md">
+      <div className="p-4 border-t border-gray-800 bg-black/40 backdrop-blur-md space-y-2">
         <button 
           onClick={handleSave}
           className="w-full bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center border border-primary/20 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]"
@@ -765,6 +766,19 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
           <Save className="w-4 h-4 mr-2" />
           Apply Changes
         </button>
+        {onDelete && (
+          <button 
+            onClick={() => {
+              if (window.confirm("Are you sure you want to delete this node?")) {
+                onDelete(node.id);
+              }
+            }}
+            className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center border border-red-500/20"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete Node
+          </button>
+        )}
       </div>
     </div>
   );

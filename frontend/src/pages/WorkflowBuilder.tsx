@@ -195,6 +195,23 @@ const WorkflowBuilderContent: React.FC = () => {
     setSelectedNodeId(node.id);
   };
 
+  const onNodesDelete = useCallback(
+    (deleted: Node[]) => {
+      if (deleted.some((n) => n.id === selectedNodeId)) {
+        setSelectedNodeId(null);
+      }
+    },
+    [selectedNodeId]
+  );
+
+  const handleDeleteNode = (nodeId: string) => {
+    setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+    setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+    if (selectedNodeId === nodeId) {
+      setSelectedNodeId(null);
+    }
+  };
+
   const handlePaneClick = () => {
     setSelectedNodeId(null);
   };
@@ -419,6 +436,7 @@ const WorkflowBuilderContent: React.FC = () => {
               onInit={setReactFlowInstance}
               onNodeClick={handleNodeClick}
               onPaneClick={handlePaneClick}
+              onNodesDelete={onNodesDelete}
               nodeTypes={nodeTypes}
               fitView
               fitViewOptions={{ maxZoom: 1, padding: 0.5 }}
@@ -446,6 +464,7 @@ const WorkflowBuilderContent: React.FC = () => {
                 edges={edges}
                 onClose={() => setSelectedNodeId(null)}
                 onUpdate={handleUpdateNode}
+                onDelete={handleDeleteNode}
               />
             )}
             
