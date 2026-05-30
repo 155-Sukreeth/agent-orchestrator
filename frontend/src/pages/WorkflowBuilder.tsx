@@ -38,6 +38,8 @@ const WorkflowBuilderContent: React.FC = () => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [paletteSearchQuery, setPaletteSearchQuery] = useState("");
   const [isNodePalettePinned, setIsNodePalettePinned] = useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(256);
+  const isResizingLeft = useRef(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -77,6 +79,30 @@ const WorkflowBuilderContent: React.FC = () => {
     
     return () => clearInterval(autoSaveInterval);
   }, [nodes, edges, workflowName, isActiveStatus, id]);
+
+  // Handle Left Panel Resizing
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingLeft.current) return;
+      setLeftPanelWidth(prev => {
+        const newWidth = prev + e.movementX;
+        return Math.min(Math.max(newWidth, 200), 600);
+      });
+    };
+    const handleMouseUp = () => {
+      if (isResizingLeft.current) {
+        isResizingLeft.current = false;
+        document.body.style.cursor = 'default';
+        document.body.style.userSelect = 'auto';
+      }
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
 
   // Command Palette Keyboard Shortcut
   useEffect(() => {
@@ -431,7 +457,13 @@ const WorkflowBuilderContent: React.FC = () => {
             
             {/* Pinned Node Palette Sidebar */}
             {isNodePalettePinned && (
-              <div className="w-64 border-r border-gray-800 bg-[#0a0a0a] flex flex-col z-20 shrink-0 h-full shadow-2xl transition-all">
+              <div style={{ width: leftPanelWidth }} className="relative border-r border-gray-800 bg-[#0a0a0a] flex flex-col z-20 shrink-0 h-full shadow-2xl">
+                {/* Resize Handle */}
+                <div 
+                  className="absolute right-0 top-0 bottom-0 w-2 translate-x-1/2 cursor-col-resize hover:bg-indigo-500/50 z-50 transition-colors"
+                  onMouseDown={(e) => { e.preventDefault(); isResizingLeft.current = true; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; }}
+                />
+                
                 <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-black/40 backdrop-blur-md">
                   <h3 className="font-semibold text-white text-sm">Node Library</h3>
                   <button 

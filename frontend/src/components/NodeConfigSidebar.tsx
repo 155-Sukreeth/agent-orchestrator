@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Save, Search, Cpu, ChevronDown, ChevronUp, Database, Check, Zap, Plus, Trash2 } from 'lucide-react';
 import { fetchActiveTools, fetchActiveDocumentIntegrations, fetchIntegrationDocuments } from '../api';
 
@@ -24,6 +24,32 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
   const [toolSearchQuery, setToolSearchQuery] = useState('');
   const [knowledgeSearchQuery, setKnowledgeSearchQuery] = useState('');
   const [innerDocSearchQuery, setInnerDocSearchQuery] = useState<Record<string, string>>({});
+
+  const [sidebarWidth, setSidebarWidth] = useState(384);
+  const isResizing = useRef(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      setSidebarWidth(prev => {
+        const newWidth = prev - e.movementX;
+        return Math.min(Math.max(newWidth, 300), 800);
+      });
+    };
+    const handleMouseUp = () => {
+      if (isResizing.current) {
+        isResizing.current = false;
+        document.body.style.cursor = 'default';
+        document.body.style.userSelect = 'auto';
+      }
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
 
   useEffect(() => {
     setFormData(node?.data || {});
@@ -456,8 +482,6 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
     );
   };
 
-  // ----- Group Renders -----
-
   const renderTriggerFields = () => (
     <>
       {node.type === 'webhookTriggerNode' && (
@@ -496,7 +520,7 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
             value={formData.system_prompt || formData.template || ''}
             onChange={(e) => {
               handleChange('system_prompt', e.target.value);
-              handleChange('template', e.target.value); // fallback
+              handleChange('template', e.target.value);
             }}
             className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white h-32 focus:ring-1 focus:ring-blue-500 custom-scrollbar outline-none"
             placeholder="You are a helpful assistant..."
@@ -595,11 +619,8 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
   );
 
   const renderControlFields = () => {
-    // Determine outgoing targets visually
     const outgoingEdges = edges.filter(e => e.source === node.id);
     const outgoingTargets = outgoingEdges.map(e => e.target);
-    
-    // Determine incoming sources visually
     const incomingEdges = edges.filter(e => e.target === node.id);
     const incomingSources = incomingEdges.map(e => e.source);
 
@@ -727,7 +748,14 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
   );
 
   return (
-    <div className="w-96 border-l border-gray-800 bg-[#0a0a0a] flex flex-col h-full shadow-2xl z-20">
+    <div 
+      style={{ width: sidebarWidth }}
+      className="absolute right-0 top-0 bottom-0 bg-[#0a0a0a] border-l border-gray-800 flex flex-col shadow-2xl z-20 animate-in slide-in-from-right-8 duration-300"
+    >
+      <div 
+        className="absolute left-0 top-0 bottom-0 w-2 -translate-x-1/2 cursor-col-resize hover:bg-indigo-500/50 z-50 transition-colors"
+        onMouseDown={(e) => { e.preventDefault(); isResizing.current = true; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; }}
+      />
       <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-black/40 backdrop-blur-md">
         <h3 className="font-semibold text-white truncate pr-2 text-sm tracking-wide flex items-center">
           <span className="text-gray-400 font-mono text-[10px] mr-2 px-1 bg-white/5 rounded border border-white/10">{node.id}</span>
