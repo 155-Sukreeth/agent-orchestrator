@@ -53,6 +53,11 @@ def compile_graph(graph_definition: dict):
             async def pause_node_func(state: AgentState):
                 return await pause_func(state)
             return pause_node_func
+        elif node_def["type"] in ["tool", "toolNode"]:
+            from agents.graph.nodes.tool_node import tool_node as tool_node_func
+            async def wrapped_tool_node(state: AgentState):
+                return await tool_node_func(state, node_def.get("data", {}))
+            return wrapped_tool_node
             
         async def fallback_func(state: AgentState):
             return {}

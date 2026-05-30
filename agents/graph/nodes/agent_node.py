@@ -55,7 +55,22 @@ class AgentNode(BaseNode):
         if llm_config.response_format:
             payload["response_format"] = llm_config.response_format
             
-        if llm_config.tools:
+        # Map requested tool names to actual OpenAI tool schemas
+        if tools_list:
+            from agents.tools.registry import get_tool
+            from langchain_core.utils.function_calling import convert_to_openai_tool
+            
+            resolved_tools = []
+            for t_name in tools_list:
+                t_obj = get_tool(t_name)
+                if t_obj:
+                    resolved_tools.append(convert_to_openai_tool(t_obj))
+                else:
+                    logger.warning(f"Tool {t_name} requested by agent config but not found in registry.")
+                    
+            if resolved_tools:
+                payload["tools"] = resolved_tools
+        elif llm_config.tools:
             payload["tools"] = llm_config.tools
 
         # Emit event before execution
