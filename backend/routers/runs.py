@@ -3,26 +3,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
 from backend.database import get_db
+from backend.models import Organization
+from backend.auth.dependencies import get_current_org
 from backend.services.run_service import run_service
 from backend.schemas.run import RunResponse, RunDetailResponse
 from backend.dependencies import get_agents_client
 from backend.clients.agents_client import AgentsClient
 
-router = APIRouter(prefix="/runs", tags=["runs"])
+router = APIRouter(tags=["runs"])
 
 @router.get("/workflow/{workflow_id}", response_model=List[RunResponse])
 async def list_runs_for_workflow(
     workflow_id: int, 
     skip: int = 0, 
     limit: int = 100, 
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_org: Organization = Depends(get_current_org)
 ):
-    return await run_service.list_runs_for_workflow(db, workflow_id, skip=skip, limit=limit)
+    return await run_service.list_runs_for_workflow(db, workflow_id, current_org.id, skip=skip, limit=limit)
 
 @router.get("/{run_id}", response_model=RunDetailResponse)
-async def get_run(run_id: int, db: AsyncSession = Depends(get_db)):
+async def get_run(run_id: int, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
     try:
-        return await run_service.get_run_with_logs(db, run_id)
+        return await run_service.get_run_with_logs(db, run_id, current_org.id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -40,7 +43,8 @@ class RunRequest(BaseModel):
 async def start_run(
     request: RunRequest,
     db: AsyncSession = Depends(get_db),
-    agents_client: AgentsClient = Depends(get_agents_client)
+    agents_client: AgentsClient = Depends(get_agents_client),
+    current_org: Organization = Depends(get_current_org)
 ):
     # run_id is assigned by the DB inside run_service; pass a placeholder so mapper
     # can build the object — run_service replaces it with the real ID before dispatch.
@@ -50,7 +54,12 @@ async def start_run(
         workflow_config={},  # workflow_config is fetched inside run_service
     )
     run_id = await run_service.start_run(
-        db, request.workflow_id, agent_payload, agents_client, run_type=request.run_type
+        db=db, 
+        workflow_id=request.workflow_id, 
+        agent_payload=agent_payload, 
+        agents_client=agents_client, 
+        org_id=current_org.id,
+        run_type=request.run_type
     )
     return {"run_id": run_id}
 

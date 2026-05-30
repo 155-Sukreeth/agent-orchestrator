@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     # Fernet encryption key for data-layer credential encryption
     ENCRYPTION_KEY: str = "Wv3aL5n8KpHqM_kU1rX2zY9tV7gT4wS0eC6bN3jM5_E="
 
+    # Auth Settings
+    JWT_SECRET_KEY: str = "your-super-secret-jwt-key-replace-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440 # 24 hours
+
     class Config:
         env_file = ".env"
         extra = "allow"

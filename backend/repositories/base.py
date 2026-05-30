@@ -16,15 +16,24 @@ class BaseRepository(Generic[T]):
             return self.dto_class.model_validate(obj)
         return obj
 
-    async def get_by_id(self, db: AsyncSession, id: Any) -> Optional[Any]:
-        result = await db.execute(select(self.model_class).where(self.model_class.id == id))
+    async def get_by_id(self, db: AsyncSession, id: Any, org_id: Optional[int] = None) -> Optional[Any]:
+        query = select(self.model_class).where(self.model_class.id == id)
+        if org_id is not None and hasattr(self.model_class, 'organization_id'):
+            query = query.where(getattr(self.model_class, 'organization_id') == org_id)
+        result = await db.execute(query)
         return self._map_to_dto(result.scalar_one_or_none())
 
-    async def get_all(self, db: AsyncSession, skip: int = 0, limit: int = 100) -> List[Any]:
-        result = await db.execute(select(self.model_class).offset(skip).limit(limit))
+    async def get_all(self, db: AsyncSession, org_id: Optional[int] = None, skip: int = 0, limit: int = 100) -> List[Any]:
+        query = select(self.model_class)
+        if org_id is not None and hasattr(self.model_class, 'organization_id'):
+            query = query.where(getattr(self.model_class, 'organization_id') == org_id)
+        query = query.offset(skip).limit(limit)
+        result = await db.execute(query)
         return [self._map_to_dto(obj) for obj in result.scalars().all()]
 
-    async def create(self, db: AsyncSession, obj_in: dict) -> Any:
+    async def create(self, db: AsyncSession, obj_in: dict, org_id: Optional[int] = None) -> Any:
+        if org_id is not None and hasattr(self.model_class, 'organization_id'):
+            obj_in['organization_id'] = org_id
         db_obj = self.model_class(**obj_in)
         db.add(db_obj)
         await db.commit()
@@ -40,8 +49,8 @@ class BaseRepository(Generic[T]):
         await db.refresh(db_obj)
         return self._map_to_dto(db_obj)
 
-    async def delete(self, db: AsyncSession, id: Any) -> bool:
-        obj = await self.get_by_id(db, id)
+    async def delete(self, db: AsyncSession, id: Any, org_id: int) -> bool:
+        obj = await self.get_by_id(db, id, org_id)
         if obj:
             await db.delete(obj)
             await db.commit()

@@ -82,7 +82,8 @@ const KnowledgeDashboard: React.FC = () => {
 
   const setupSSE = (id: number) => {
     const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
-    const source = new EventSource(`${API_URL}/api/integrations/${id}/stream`);
+    const token = localStorage.getItem('token');
+    const source = new EventSource(`${API_URL}/api/integrations/${id}/stream?token=${token || ''}`);
 
     source.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -110,10 +111,12 @@ const KnowledgeDashboard: React.FC = () => {
         setIsCrawling(false);
         loadIntegrations(); // Refresh source statuses
         loadDocuments(id);  // Refresh tools/documents list automatically
+        source.close();
       } else if (data.type === 'sync_error') {
         setIsCrawling(false);
         alert(`Synchronization failed: ${data.error}`);
         loadIntegrations();
+        source.close();
       }
     };
 
@@ -135,6 +138,9 @@ const KnowledgeDashboard: React.FC = () => {
       setSources(sources.map(s => s.id === activeSourceId ? { ...s, status: 'syncing' } : s));
       
       await crawlIntegration(activeSourceId.toString());
+      
+      // Re-establish SSE connection if it was closed by a previous complete/error
+      setupSSE(activeSourceId);
     } catch (err) {
       console.error(err);
       setIsCrawling(false);
@@ -247,8 +253,7 @@ const KnowledgeDashboard: React.FC = () => {
                   )}
                   <button 
                     onClick={handleCrawl}
-                    disabled={activeSource.status === 'syncing' || isCrawling}
-                    className="flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 text-sm font-medium rounded-lg transition-colors border border-white/10 disabled:opacity-50">
+                    className="flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 text-sm font-medium rounded-lg transition-colors border border-white/10">
                     <RefreshCw className={`w-4 h-4 mr-2 text-gray-400 ${(activeSource.status === 'syncing' || isCrawling) ? 'animate-spin' : ''}`} />
                     Force Resync
                   </button>

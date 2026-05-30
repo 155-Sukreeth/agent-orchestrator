@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Bot, Network, ActivitySquare, LayoutDashboard, Database, Link as LinkIcon, User, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const Layout: React.FC = () => {
+  const { user, logout } = useAuth();
+  
   const navItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/agents' },
     { name: 'Builder', icon: Network, path: '/workflows/new' },
@@ -92,12 +95,12 @@ const Layout: React.FC = () => {
                 <User className="w-4 h-4 text-indigo-400" />
               </div>
               <div className="truncate">
-                <p className="text-sm font-medium text-gray-200 truncate">Admin User</p>
-                <p className="text-[10px] text-gray-500 truncate">Workspace Owner</p>
+                <p className="text-sm font-medium text-gray-200 truncate">{user?.email || 'User'}</p>
+                <p className="text-[10px] text-gray-500 truncate">Org ID: {user?.organization_id || 'Unknown'}</p>
               </div>
             </div>
             <button 
-              onClick={() => window.alert("Logout functionality will be integrated with the Auth service.")}
+              onClick={logout}
               className="p-2 text-gray-500 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors" 
               title="Logout"
             >

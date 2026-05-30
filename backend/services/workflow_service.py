@@ -6,33 +6,34 @@ from backend.schemas.workflow import WorkflowCreate, WorkflowUpdate, WorkflowRes
 from typing import List
 
 class WorkflowService:
-    async def get_workflow(self, db: AsyncSession, workflow_id: int) -> WorkflowResponse:
-        workflow_dto = await workflow_repository.get_by_id(db, workflow_id)
+    async def get_workflow(self, db: AsyncSession, workflow_id: int, org_id: int) -> WorkflowResponse:
+        workflow_dto = await workflow_repository.get_by_id(db, workflow_id, org_id)
         if not workflow_dto:
             raise ValueError(f"Workflow {workflow_id} not found")
         return workflow_dto
 
-    async def list_workflows(self, db: AsyncSession, skip: int = 0, limit: int = 100) -> List[WorkflowResponse]:
-        return await workflow_repository.get_all(db, skip, limit)
+    async def list_workflows(self, db: AsyncSession, org_id: int, skip: int = 0, limit: int = 100) -> List[WorkflowResponse]:
+        return await workflow_repository.get_all(db, org_id, skip, limit)
 
     async def list_templates(self, db: AsyncSession) -> List[dict]:
         templates = await workflow_template_repository.get_all(db)
         return [t.model_dump() for t in templates]
 
-    async def create_workflow(self, db: AsyncSession, workflow_in: WorkflowCreate) -> WorkflowResponse:
+    async def create_workflow(self, db: AsyncSession, workflow_in: WorkflowCreate, org_id: int) -> WorkflowResponse:
         workflow_data = workflow_in.model_dump()
         if "description_embedding" not in workflow_data or workflow_data["description_embedding"] is None:
             # Dummy embedding for MVP
             workflow_data["description_embedding"] = [0.0] * 1536 
             
-        workflow_dto = await workflow_repository.create(db, workflow_data)
+        workflow_dto = await workflow_repository.create(db, workflow_data, org_id)
         
         # Refetch to eager-load relationships (like triggers) for Pydantic validation
-        return await workflow_repository.get_by_id(db, workflow_dto.id)
+        return await workflow_repository.get_by_id(db, workflow_dto.id, org_id)
 
-    async def update_workflow(self, db: AsyncSession, workflow_id: int, workflow_in: WorkflowUpdate) -> WorkflowResponse:
+    async def update_workflow(self, db: AsyncSession, workflow_id: int, workflow_in: WorkflowUpdate, org_id: int) -> WorkflowResponse:
         db_workflow = await workflow_repository.get_entity_by_id(db, workflow_id)
-        
+        if db_workflow and hasattr(db_workflow, "organization_id") and db_workflow.organization_id != org_id:
+            raise ValueError(f"Workflow {workflow_id} not found or unauthorized")
         if not db_workflow:
             raise ValueError(f"Workflow {workflow_id} not found")
             
@@ -71,10 +72,10 @@ class WorkflowService:
                 if ext_id not in incoming_ids:
                     await workflow_trigger_repository.delete(db, t_obj.id)
             
-        return await workflow_repository.get_by_id(db, workflow_id)
+        return await workflow_repository.get_by_id(db, workflow_id, org_id)
 
-    async def delete_workflow(self, db: AsyncSession, workflow_id: int) -> bool:
+    async def delete_workflow(self, db: AsyncSession, workflow_id: int, org_id: int) -> bool:
         # Business logic: could check if workflow has active runs, etc.
-        return await workflow_repository.delete(db, workflow_id)
+        return await workflow_repository.delete(db, workflow_id, org_id)
 
 workflow_service = WorkflowService()

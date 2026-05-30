@@ -70,8 +70,10 @@ async def telegram_webhook(
 
     if not msg.get("text"):
         return {"status": "ignored"}
-
-    workflow = await semantic_router_service.route_message(db, msg["text"], "telegram", agents_client)
+    # TODO: Extract org_id dynamically from the incoming webhook URL/token or connection mapping
+    SYSTEM_ORG_ID = 1 
+    
+    workflow = await semantic_router_service.route_message(db, msg["text"], "telegram", agents_client, SYSTEM_ORG_ID)
     if not workflow:
         await adaptor.send_message(msg["sender_id"], msg["thread_id"], "No matching workflow found for your request.")
         return {"status": "no_match"}
@@ -87,5 +89,13 @@ async def telegram_webhook(
         run_id="pending",
         workflow_config={},
     )
-    await run_service.start_run(db, workflow.id, agent_payload, agents_client)
+    await run_service.start_run(
+        db=db, 
+        workflow_id=workflow.id, 
+        agent_payload=agent_payload, 
+        agents_client=agents_client, 
+        org_id=workflow.organization_id,
+        sender_id=msg["sender_id"],
+        thread_id=msg.get("thread_id")
+    )
     return {"status": "accepted"}

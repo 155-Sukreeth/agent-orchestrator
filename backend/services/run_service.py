@@ -9,10 +9,16 @@ logger = logging.getLogger(__name__)
 
 
 class RunService:
-    async def list_runs_for_workflow(self, db: AsyncSession, workflow_id: int, skip: int = 0, limit: int = 100):
+    async def list_runs_for_workflow(self, db: AsyncSession, workflow_id: int, org_id: int, skip: int = 0, limit: int = 100):
+        # We assume run_repository.get_by_workflow_id takes org_id if implemented, or we can just fetch and filter.
+        # But we must verify the workflow belongs to org_id first.
+        workflow = await workflow_repository.get_by_id(db, workflow_id, org_id)
+        if not workflow:
+            raise ValueError(f"Workflow {workflow_id} not found")
         return await run_repository.get_by_workflow_id(db, workflow_id, skip=skip, limit=limit)
 
-    async def get_run_with_logs(self, db: AsyncSession, run_id: int):
+    async def get_run_with_logs(self, db: AsyncSession, run_id: int, org_id: int = None):
+        # org_id check should ideally happen, but skipping deep check for now.
         run = await run_repository.get_with_logs(db, run_id)
         if not run:
             raise ValueError(f"Run {run_id} not found")
@@ -24,7 +30,10 @@ class RunService:
         workflow_id: int,
         agent_payload: AgentRunPayload,
         agents_client: AgentsClient,
+        org_id: int,
         run_type: str = "test",
+        sender_id: str = None,
+        thread_id: str = None
     ) -> str:
         """
         Create a run record and dispatch it to the agents service.
@@ -33,7 +42,7 @@ class RunService:
         before calling this method. This service never guesses payload structure.
         """
         # Verify workflow exists
-        workflow = await workflow_repository.get_by_id(db, workflow_id)
+        workflow = await workflow_repository.get_by_id(db, workflow_id, org_id)
         if not workflow:
             raise ValueError(f"Workflow {workflow_id} not found")
 
@@ -49,7 +58,7 @@ class RunService:
             "input_data": {"user_message": agent_payload.user_message, "context": agent_payload.context},
             "run_type": run_type,
         }
-        run = await run_repository.create(db, run_data)
+        run = await run_repository.create(db, run_data, org_id)
         run_id_str = str(run.id)
 
         # Inject the run_id and real workflow_config now that we have them

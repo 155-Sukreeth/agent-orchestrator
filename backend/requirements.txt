@@ -17,6 +17,7 @@ python-docx
 aiofiles
 fastmcp
 cryptography
-
 tenacity
 pybreaker
+python-jose[cryptography]
+passlib[bcrypt]

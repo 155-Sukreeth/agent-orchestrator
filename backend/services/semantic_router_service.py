@@ -7,13 +7,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 class SemanticRouterService:
-    async def route_message(self, db: AsyncSession, message: str, channel: str, agents_client: AgentsClient) -> Workflow | None:
+    async def route_message(self, db: AsyncSession, message: str, channel: str, agents_client: AgentsClient, org_id: int) -> Workflow | None:
         """
         Uses the Agents client to run semantic routing logic over active workflows.
         """
         from backend.repositories.workflow_repository import workflow_repository
         
-        active_workflows = await workflow_repository.get_active_workflows(db)
+        active_workflows = await workflow_repository.get_active_workflows(db, org_id)
         
         # Filter by channel if required
         valid_workflows = []
