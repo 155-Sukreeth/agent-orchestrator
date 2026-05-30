@@ -16,7 +16,7 @@ import { RouterNode, LoopNode, ParallelSplitNode, MergeNode, HumanPauseNode, Sta
 import { ToolNode, KnowledgeNode } from '../components/nodes/integrate/IntegrateNodes';
 import NodeConfigSidebar from '../components/NodeConfigSidebar';
 import TriggersPanel from '../components/workflow/TriggersPanel';
-import { Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, X, Search, Zap, Cpu, GitBranch, Blocks, MessageSquare, Globe, Clock, FileText, Code, Settings, RefreshCw, GitCommit, GitMerge, PauseCircle, Wrench, Database, Pin, PinOff, User, Flag } from 'lucide-react';
+import { Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, X, Search, Zap, Cpu, GitBranch, Blocks, Globe, Clock, FileText, Code, Settings, RefreshCw, GitCommit, GitMerge, PauseCircle, Wrench, Database, User, Flag, MessageSquare } from 'lucide-react';
 import { createWorkflow, fetchWorkflow, updateWorkflow, fetchWorkflows } from '../api';
 
 const initialNodes: Node[] = [];
@@ -50,9 +50,9 @@ const WorkflowBuilderContent: React.FC = () => {
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'editor' | 'json' | 'executions'>('editor');
+  const [leftPanelTab, setLeftPanelTab] = useState<'triggers' | 'nodes'>('triggers');
   const [jsonInput, setJsonInput] = useState<string>('');
   const [triggers, setTriggers] = useState<any[]>([]);
-  const [isTriggersPanelOpen, setIsTriggersPanelOpen] = useState(false);
   
   // Workspace State
   const [workflows, setWorkflows] = useState<any[]>([]);
@@ -60,10 +60,8 @@ const WorkflowBuilderContent: React.FC = () => {
   const [isImmersive, setIsImmersive] = useState(false);
   const [isActiveStatus, setIsActiveStatus] = useState(false);
   const [workflowName, setWorkflowName] = useState("New Workflow Draft");
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [paletteSearchQuery, setPaletteSearchQuery] = useState("");
-  const [isNodePalettePinned, setIsNodePalettePinned] = useState(false);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(256);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(220);
   const isResizingLeft = useRef(false);
   
   const [workspacePanelWidth, setWorkspacePanelWidth] = useState(256);
@@ -162,17 +160,7 @@ const WorkflowBuilderContent: React.FC = () => {
     };
   }, []);
 
-  // Command Palette Keyboard Shortcut
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsCommandPaletteOpen(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  // Command Palette Keyboard Shortcut removed — left panel is always visible
 
   const loadWorkflowsList = async () => {
     try {
@@ -482,7 +470,7 @@ const WorkflowBuilderContent: React.FC = () => {
                 onClick={() => setActiveTab('editor')}
                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap ${activeTab === 'editor' ? 'bg-indigo-500 text-white shadow' : 'text-gray-400 hover:text-gray-200'}`}
               >
-                <div className="flex items-center"><Settings2 className="w-4 h-4 mr-2" /> Visual Editor</div>
+                <div className="flex items-center"><Settings2 className="w-4 h-4 mr-2" />Visual Editor</div>
               </button>
               <button 
                 onClick={() => {
@@ -493,13 +481,13 @@ const WorkflowBuilderContent: React.FC = () => {
                 }}
                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap ${activeTab === 'json' ? 'bg-indigo-500 text-white shadow' : 'text-gray-400 hover:text-gray-200'}`}
               >
-                <div className="flex items-center"><Code className="w-4 h-4 mr-2" /> JSON Editor</div>
+                <div className="flex items-center"><Code className="w-4 h-4 mr-2" />JSON Editor</div>
               </button>
               <button 
                 onClick={() => setActiveTab('executions')}
                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap ${activeTab === 'executions' ? 'bg-indigo-500 text-white shadow' : 'text-gray-400 hover:text-gray-200'}`}
               >
-                <div className="flex items-center"><PlaySquare className="w-4 h-4 mr-2" /> Executions</div>
+                <div className="flex items-center"><PlaySquare className="w-4 h-4 mr-2" />Executions</div>
               </button>
             </div>
           </div>
@@ -546,124 +534,225 @@ const WorkflowBuilderContent: React.FC = () => {
           </button>
         )}
 
-        {/* Tab Content */}
         {activeTab === 'editor' && (
           <div className="flex-1 flex relative w-full h-full pt-16" ref={reactFlowWrapper}>
             
-            {/* Pinned Node Palette Sidebar */}
-            {isNodePalettePinned && (
-              <div style={{ width: leftPanelWidth }} className="relative border-r border-gray-800 bg-[#0a0a0a] flex flex-col z-20 shrink-0 h-full shadow-2xl transition-all duration-500 ease-in-out">
-                {/* Resize Handle */}
-                <div 
-                  className="absolute right-0 top-0 bottom-0 w-2 translate-x-1/2 cursor-col-resize hover:bg-indigo-500/50 z-50 transition-colors"
-                  onMouseDown={(e) => { e.preventDefault(); isResizingLeft.current = true; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; }}
-                />
-                
-                <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-black/40 backdrop-blur-md">
-                  <h3 className="font-semibold text-white text-sm">Node Library</h3>
+            {/* Permanent Node Panel (Components) */}
+            <div style={{ width: leftPanelWidth }} className="relative border-r border-gray-800 bg-[#0a0a0a] flex flex-col z-20 shrink-0 h-full shadow-2xl">
+              {/* Resize Handle */}
+              <div 
+                className="absolute right-0 top-0 bottom-0 w-2 translate-x-1/2 cursor-col-resize hover:bg-indigo-500/50 z-50 transition-colors"
+                onMouseDown={(e) => { e.preventDefault(); isResizingLeft.current = true; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; }}
+              />
+              
+              <div className="p-2 border-b border-gray-800 bg-black/40">
+                <div className="flex bg-black/50 p-1 rounded-lg border border-white/5 w-full">
                   <button 
-                    onClick={() => setIsNodePalettePinned(false)} 
-                    className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 transition-colors"
-                    title="Unpin"
+                    onClick={() => setLeftPanelTab('triggers')}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-md transition-all ${leftPanelTab === 'triggers' ? 'bg-purple-600 text-white shadow' : 'text-gray-500 hover:text-gray-300'}`}
                   >
-                    <PinOff className="w-4 h-4" />
+                    <Zap className="w-3.5 h-3.5" /> Triggers
+                  </button>
+                  <button 
+                    onClick={() => setLeftPanelTab('nodes')}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-md transition-all ${leftPanelTab === 'nodes' ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 hover:text-gray-300'}`}
+                  >
+                    <Blocks className="w-3.5 h-3.5" /> Nodes
                   </button>
                 </div>
-                <div className="p-3 border-b border-gray-800 bg-black/20">
-                  <div className="flex items-center bg-black/50 border border-white/10 rounded-lg px-2.5 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
-                    <Search className="w-3.5 h-3.5 text-gray-500" />
-                    <input 
-                      type="text"
-                      placeholder="Search nodes..."
-                      value={paletteSearchQuery}
-                      onChange={(e) => setPaletteSearchQuery(e.target.value)}
-                      className="bg-transparent border-none outline-none text-white text-xs w-full py-2 pl-2 placeholder-gray-600"
-                    />
-                  </div>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
-                  {/* Flow Control */}
-                  <div className={paletteSearchQuery && !['start', 'end'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : 'block'}>
-                    <h4 className="text-[10px] font-bold text-rose-400 uppercase tracking-wider mb-2 flex items-center">
-                      <Zap className="w-3 h-3 mr-1.5" />
-                      Flow
-                    </h4>
-                    <div className="space-y-1">
-                      <button onClick={() => handleAddNode('start', 'Start')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-rose-500/10 rounded-lg transition-colors border border-transparent hover:border-rose-500/20 group">
-                        <PlaySquare className="w-3.5 h-3.5 mr-2 text-rose-500/50 group-hover:text-rose-400 transition-colors" /> Start
-                      </button>
-                      <button onClick={() => handleAddNode('end', 'End')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-rose-500/10 rounded-lg transition-colors border border-transparent hover:border-rose-500/20 group">
-                        <Flag className="w-3.5 h-3.5 mr-2 text-rose-500/50 group-hover:text-rose-400 transition-colors" /> End
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Transform */}
-                  <div className={paletteSearchQuery && !['agent', 'prompt', 'structured', 'state'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : 'block'}>
-                    <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-2 flex items-center">
-                      <Cpu className="w-3 h-3 mr-1.5" />
-                      Transform
-                    </h4>
-                    <div className="space-y-1">
-                      <button onClick={() => handleAddNode('agentNode', 'Agent')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-blue-500/10 rounded-lg transition-colors border border-transparent hover:border-blue-500/20 group">
-                        <Cpu className="w-3.5 h-3.5 mr-2 text-blue-500/50 group-hover:text-blue-400 transition-colors" /> Agent
-                      </button>
-                      <button onClick={() => handleAddNode('promptBuilderNode', 'Prompt Builder')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-blue-500/10 rounded-lg transition-colors border border-transparent hover:border-blue-500/20 group">
-                        <FileText className="w-3.5 h-3.5 mr-2 text-blue-500/50 group-hover:text-blue-400 transition-colors" /> Prompt Builder
-                      </button>
-                      <button onClick={() => handleAddNode('structuredOutputNode', 'Structured Output')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-blue-500/10 rounded-lg transition-colors border border-transparent hover:border-blue-500/20 group">
-                        <Code className="w-3.5 h-3.5 mr-2 text-blue-500/50 group-hover:text-blue-400 transition-colors" /> Structured Output
-                      </button>
-                      <button onClick={() => handleAddNode('stateTransformNode', 'State Transform')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-blue-500/10 rounded-lg transition-colors border border-transparent hover:border-blue-500/20 group">
-                        <Settings className="w-3.5 h-3.5 mr-2 text-blue-500/50 group-hover:text-blue-400 transition-colors" /> State Transform
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Control */}
-                  <div className={paletteSearchQuery && !['router', 'loop', 'split', 'merge', 'pause'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : 'block'}>
-                    <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center">
-                      <GitBranch className="w-3 h-3 mr-1.5" />
-                      Control
-                    </h4>
-                    <div className="space-y-1">
-                      <button onClick={() => handleAddNode('routerNode', 'Router')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-lg transition-colors border border-transparent hover:border-amber-500/20 group">
-                        <GitBranch className="w-3.5 h-3.5 mr-2 text-amber-500/50 group-hover:text-amber-400 transition-colors" /> Router
-                      </button>
-                      <button onClick={() => handleAddNode('loopNode', 'Loop')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-lg transition-colors border border-transparent hover:border-amber-500/20 group">
-                        <RefreshCw className="w-3.5 h-3.5 mr-2 text-amber-500/50 group-hover:text-amber-400 transition-colors" /> Loop
-                      </button>
-                      <button onClick={() => handleAddNode('parallelSplitNode', 'Parallel Split')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-lg transition-colors border border-transparent hover:border-amber-500/20 group">
-                        <GitCommit className="w-3.5 h-3.5 mr-2 text-amber-500/50 group-hover:text-amber-400 transition-colors" /> Parallel Split
-                      </button>
-                      <button onClick={() => handleAddNode('mergeNode', 'Merge')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-lg transition-colors border border-transparent hover:border-amber-500/20 group">
-                        <GitMerge className="w-3.5 h-3.5 mr-2 text-amber-500/50 group-hover:text-amber-400 transition-colors" /> Merge
-                      </button>
-                      <button onClick={() => handleAddNode('humanPauseNode', 'Human Pause')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-lg transition-colors border border-transparent hover:border-amber-500/20 group">
-                        <PauseCircle className="w-3.5 h-3.5 mr-2 text-amber-500/50 group-hover:text-amber-400 transition-colors" /> Human Pause
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Integrate */}
-                  <div className={paletteSearchQuery && !['tool', 'knowledge'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : 'block'}>
-                    <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center">
-                      <Blocks className="w-3 h-3 mr-1.5" />
-                      Integrate
-                    </h4>
-                    <div className="space-y-1">
-                      <button onClick={() => handleAddNode('toolNode', 'Tool Execution')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-emerald-500/10 rounded-lg transition-colors border border-transparent hover:border-emerald-500/20 group">
-                        <Wrench className="w-3.5 h-3.5 mr-2 text-emerald-500/50 group-hover:text-emerald-400 transition-colors" /> Tool Execution
-                      </button>
-                      <button onClick={() => handleAddNode('knowledgeNode', 'Knowledge Retrieval')} className="w-full flex items-center px-2 py-2 text-xs text-gray-300 hover:text-white hover:bg-emerald-500/10 rounded-lg transition-colors border border-transparent hover:border-emerald-500/20 group">
-                        <Database className="w-3.5 h-3.5 mr-2 text-emerald-500/50 group-hover:text-emerald-400 transition-colors" /> Knowledge Retrieval
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </div>
-            )}
-            
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {leftPanelTab === 'nodes' ? (
+                  <>
+                    <div className="p-2 border-b border-gray-800 bg-black/20">
+                      <div className="flex items-center bg-black/50 border border-white/10 rounded-lg px-2.5 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
+                        <Search className="w-3.5 h-3.5 text-gray-500" />
+                        <input 
+                          type="text"
+                          placeholder="Search..."
+                          value={paletteSearchQuery}
+                          onChange={(e) => setPaletteSearchQuery(e.target.value)}
+                          className="bg-transparent border-none outline-none text-white text-xs w-full py-1.5 pl-2 placeholder-gray-600"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-3 space-y-4">
+                      {/* Flow */}
+                      <div className={paletteSearchQuery && !['start', 'end'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : 'block'}>
+                        <h4 className="text-[9px] font-bold text-rose-400 uppercase tracking-widest mb-1.5 flex items-center gap-1"><Zap className="w-2.5 h-2.5" /> Flow</h4>
+                        <div className="space-y-0.5">
+                          <button onClick={() => handleAddNode('start', 'Start')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-rose-500/10 rounded-md transition-colors group">
+                            <PlaySquare className="w-3.5 h-3.5 shrink-0 text-rose-500/40 group-hover:text-rose-400" /> Start
+                          </button>
+                          <button onClick={() => handleAddNode('end', 'End')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-rose-500/10 rounded-md transition-colors group">
+                            <Flag className="w-3.5 h-3.5 shrink-0 text-rose-500/40 group-hover:text-rose-400" /> End
+                          </button>
+                        </div>
+                      </div>
+                      {/* Transform */}
+                      <div className={paletteSearchQuery && !['agent', 'prompt', 'structured', 'state'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : 'block'}>
+                        <h4 className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mb-1.5 flex items-center gap-1"><Cpu className="w-2.5 h-2.5" /> Transform</h4>
+                        <div className="space-y-0.5">
+                          <button onClick={() => handleAddNode('agentNode', 'Agent')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-blue-500/10 rounded-md transition-colors group">
+                            <Cpu className="w-3.5 h-3.5 shrink-0 text-blue-500/40 group-hover:text-blue-400" /> Agent
+                          </button>
+                          <button onClick={() => handleAddNode('promptBuilderNode', 'Prompt Builder')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-blue-500/10 rounded-md transition-colors group">
+                            <FileText className="w-3.5 h-3.5 shrink-0 text-blue-500/40 group-hover:text-blue-400" /> Prompt Builder
+                          </button>
+                          <button onClick={() => handleAddNode('structuredOutputNode', 'Structured Output')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-blue-500/10 rounded-md transition-colors group">
+                            <Code className="w-3.5 h-3.5 shrink-0 text-blue-500/40 group-hover:text-blue-400" /> Structured Output
+                          </button>
+                          <button onClick={() => handleAddNode('stateTransformNode', 'State Transform')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-blue-500/10 rounded-md transition-colors group">
+                            <Settings className="w-3.5 h-3.5 shrink-0 text-blue-500/40 group-hover:text-blue-400" /> State Transform
+                          </button>
+                        </div>
+                      </div>
+                      {/* Control */}
+                      <div className={paletteSearchQuery && !['router', 'loop', 'split', 'merge', 'pause'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : 'block'}>
+                        <h4 className="text-[9px] font-bold text-amber-400 uppercase tracking-widest mb-1.5 flex items-center gap-1"><GitBranch className="w-2.5 h-2.5" /> Control</h4>
+                        <div className="space-y-0.5">
+                          <button onClick={() => handleAddNode('routerNode', 'Router')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-amber-500/10 rounded-md transition-colors group">
+                            <GitBranch className="w-3.5 h-3.5 shrink-0 text-amber-500/40 group-hover:text-amber-400" /> Router
+                          </button>
+                          <button onClick={() => handleAddNode('loopNode', 'Loop')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-amber-500/10 rounded-md transition-colors group">
+                            <RefreshCw className="w-3.5 h-3.5 shrink-0 text-amber-500/40 group-hover:text-amber-400" /> Loop
+                          </button>
+                          <button onClick={() => handleAddNode('parallelSplitNode', 'Parallel Split')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-amber-500/10 rounded-md transition-colors group">
+                            <GitCommit className="w-3.5 h-3.5 shrink-0 text-amber-500/40 group-hover:text-amber-400" /> Parallel Split
+                          </button>
+                          <button onClick={() => handleAddNode('mergeNode', 'Merge')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-amber-500/10 rounded-md transition-colors group">
+                            <GitMerge className="w-3.5 h-3.5 shrink-0 text-amber-500/40 group-hover:text-amber-400" /> Merge
+                          </button>
+                          <button onClick={() => handleAddNode('humanPauseNode', 'Human Pause')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-amber-500/10 rounded-md transition-colors group">
+                            <PauseCircle className="w-3.5 h-3.5 shrink-0 text-amber-500/40 group-hover:text-amber-400" /> Human Pause
+                          </button>
+                        </div>
+                      </div>
+                      {/* Integrate */}
+                      <div className={paletteSearchQuery && !['tool', 'knowledge'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : 'block'}>
+                        <h4 className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mb-1.5 flex items-center gap-1"><Wrench className="w-2.5 h-2.5" /> Integrate</h4>
+                        <div className="space-y-0.5">
+                          <button onClick={() => handleAddNode('toolNode', 'Tool Execution')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-emerald-500/10 rounded-md transition-colors group">
+                            <Wrench className="w-3.5 h-3.5 shrink-0 text-emerald-500/40 group-hover:text-emerald-400" /> Tool Execution
+                          </button>
+                          <button onClick={() => handleAddNode('knowledgeNode', 'Knowledge Retrieval')} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-emerald-500/10 rounded-md transition-colors group">
+                            <Database className="w-3.5 h-3.5 shrink-0 text-emerald-500/40 group-hover:text-emerald-400" /> Knowledge Retrieval
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-3 space-y-4">
+                    {/* Add Trigger Section */}
+                    <div>
+                      <h4 className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-2">Add New Trigger</h4>
+                      <div className="space-y-1.5">
+                        <button onClick={() => setTriggers([...triggers, { type: 'semantic', enabled: true, config: { channels: [], confidence_threshold: 0.75 } }])} className="w-full flex items-center px-2 py-1.5 text-xs text-gray-400 bg-black/20 hover:text-white hover:bg-purple-500/10 rounded-md transition-colors border border-gray-800 hover:border-purple-500/30 group">
+                          <MessageSquare className="w-3.5 h-3.5 mr-2 text-purple-500/50 group-hover:text-purple-400" /> Semantic Router
+                        </button>
+                        <button onClick={() => setTriggers([...triggers, { type: 'webhook', enabled: true, config: { endpoint_path: '' } }])} className="w-full flex items-center px-2 py-1.5 text-xs text-gray-400 bg-black/20 hover:text-white hover:bg-purple-500/10 rounded-md transition-colors border border-gray-800 hover:border-purple-500/30 group">
+                          <Globe className="w-3.5 h-3.5 mr-2 text-purple-500/50 group-hover:text-purple-400" /> Webhook
+                        </button>
+                        <button onClick={() => setTriggers([...triggers, { type: 'scheduler', enabled: true, config: { cron: '' } }])} className="w-full flex items-center px-2 py-1.5 text-xs text-gray-400 bg-black/20 hover:text-white hover:bg-purple-500/10 rounded-md transition-colors border border-gray-800 hover:border-purple-500/30 group">
+                          <Clock className="w-3.5 h-3.5 mr-2 text-purple-500/50 group-hover:text-purple-400" /> Scheduler
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="w-full h-px bg-gray-800"></div>
+
+                    {/* Active Triggers */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-[9px] font-bold text-purple-400 uppercase tracking-wider">Configured Triggers</h4>
+                        <span className="text-[9px] text-gray-500 bg-black/40 px-1.5 py-0.5 rounded">{triggers.length}</span>
+                      </div>
+                      
+                      {triggers.length === 0 ? (
+                        <div className="text-center py-6 bg-black/20 rounded-lg border border-gray-800 border-dashed">
+                          <p className="text-xs text-gray-500">No triggers</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {triggers.map((trigger, i) => (
+                            <div key={trigger.id || i} className="bg-black/40 border border-gray-800 rounded-lg p-2.5 hover:border-gray-700 transition-colors">
+                              <div className="flex items-start justify-between mb-2 pb-2 border-b border-gray-800/50">
+                                <div className="flex items-center gap-2">
+                                  {trigger.type === 'semantic' ? <MessageSquare className="w-3.5 h-3.5 text-purple-400" /> :
+                                   trigger.type === 'webhook' ? <Globe className="w-3.5 h-3.5 text-purple-400" /> :
+                                   trigger.type === 'scheduler' ? <Clock className="w-3.5 h-3.5 text-purple-400" /> :
+                                   <Zap className="w-3.5 h-3.5 text-purple-400" />}
+                                  <h3 className="text-[11px] font-medium text-gray-200 capitalize">{trigger.type.replace('_', ' ')}</h3>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button 
+                                    onClick={() => {
+                                      const updated = [...triggers];
+                                      updated[i] = { ...updated[i], enabled: !updated[i].enabled };
+                                      setTriggers(updated);
+                                    }}
+                                    className={`relative inline-flex h-3.5 w-6 items-center rounded-full transition-colors ${trigger.enabled ? 'bg-purple-500' : 'bg-gray-700'}`}
+                                  >
+                                    <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${trigger.enabled ? 'translate-x-3' : 'translate-x-0.5'}`} />
+                                  </button>
+                                  <button onClick={() => setTriggers(triggers.filter((_, idx) => idx !== i))} className="text-gray-500 hover:text-red-400 transition-colors">
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                {trigger.type === 'semantic' && (
+                                  <>
+                                    <div>
+                                      <label className="block text-[10px] text-gray-500 mb-0.5">Channels</label>
+                                      <input type="text" className="w-full bg-black/50 border border-gray-800 rounded px-1.5 py-1 text-xs text-gray-300 focus:border-purple-500/50 focus:outline-none"
+                                        placeholder="telegram, web"
+                                        value={(trigger.config.channels || []).join(', ')}
+                                        onChange={(e) => { const u = [...triggers]; u[i] = { ...u[i], config: { ...u[i].config, channels: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) } }; setTriggers(u); }}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[10px] text-gray-500 mb-0.5">Confidence (0-1)</label>
+                                      <input type="number" step="0.01" min="0" max="1" className="w-full bg-black/50 border border-gray-800 rounded px-1.5 py-1 text-xs text-gray-300 focus:border-purple-500/50 focus:outline-none"
+                                        value={trigger.config.confidence_threshold || 0.75}
+                                        onChange={(e) => { const u = [...triggers]; u[i] = { ...u[i], config: { ...u[i].config, confidence_threshold: parseFloat(e.target.value) } }; setTriggers(u); }}
+                                      />
+                                    </div>
+                                  </>
+                                )}
+                                {trigger.type === 'webhook' && (
+                                  <div>
+                                    <label className="block text-[10px] text-gray-500 mb-0.5">Endpoint Path</label>
+                                    <input type="text" className="w-full bg-black/50 border border-gray-800 rounded px-1.5 py-1 text-xs text-gray-300 focus:border-purple-500/50 focus:outline-none"
+                                      placeholder="/webhook"
+                                      value={trigger.config.endpoint_path || ''}
+                                      onChange={(e) => { const u = [...triggers]; u[i] = { ...u[i], config: { ...u[i].config, endpoint_path: e.target.value } }; setTriggers(u); }}
+                                    />
+                                  </div>
+                                )}
+                                {trigger.type === 'scheduler' && (
+                                  <div>
+                                    <label className="block text-[10px] text-gray-500 mb-0.5">Cron</label>
+                                    <input type="text" className="w-full bg-black/50 border border-gray-800 rounded px-1.5 py-1 text-xs font-mono text-gray-300 focus:border-purple-500/50 focus:outline-none"
+                                      placeholder="0 * * * *"
+                                      value={trigger.config.cron || ''}
+                                      onChange={(e) => { const u = [...triggers]; u[i] = { ...u[i], config: { ...u[i].config, cron: e.target.value } }; setTriggers(u); }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Canvas */}
             <div className="flex-1 flex relative w-full h-full">
               <ReactFlow 
               nodes={nodes} 
@@ -687,19 +776,6 @@ const WorkflowBuilderContent: React.FC = () => {
 
             </div>
 
-            {/* Floating Add Node Button */}
-            {!isNodePalettePinned && (
-              <button 
-                onClick={() => setIsCommandPaletteOpen(true)}
-                className={`absolute top-20 left-6 z-10 bg-gray-900/90 backdrop-blur-md hover:bg-gray-800 border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-xl transition-all flex items-center group ${isImmersive ? 'opacity-30 hover:opacity-100' : 'opacity-100'}`}
-              >
-                <Plus className="w-4 h-4 mr-2 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
-                Node Library
-                <span className="ml-3 px-1.5 py-0.5 bg-white/5 rounded text-[10px] text-gray-500 font-mono tracking-widest border border-white/5">⌘K</span>
-              </button>
-            )}
-
-
             <div className={`absolute right-0 top-0 bottom-0 z-20 transition-transform duration-500 ease-out ${isSidebarVisible ? 'translate-x-0' : 'translate-x-full'}`}>
               {isSidebarVisible && activeSidebarNode && (
                 <NodeConfigSidebar 
@@ -709,137 +785,9 @@ const WorkflowBuilderContent: React.FC = () => {
                   onClose={() => setSelectedNodeId(null)}
                   onUpdate={handleUpdateNode}
                   onDelete={handleDeleteNode}
-                  onOpenTriggers={() => setIsTriggersPanelOpen(true)}
                 />
               )}
             </div>
-            
-            {/* Command Palette Modal */}
-            {isCommandPaletteOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm">
-                <div 
-                  className="bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="p-4 border-b border-white/5 flex items-center">
-                    <Search className="w-5 h-5 text-gray-400 mr-3" />
-                    <input 
-                      type="text"
-                      autoFocus
-                      placeholder="Search nodes..."
-                      value={paletteSearchQuery}
-                      onChange={(e) => setPaletteSearchQuery(e.target.value)}
-                      className="bg-transparent border-none outline-none text-white text-lg w-full placeholder-gray-600"
-                    />
-                    <button 
-                      onClick={() => { setIsNodePalettePinned(true); setIsCommandPaletteOpen(false); }}
-                      className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 transition-colors ml-2"
-                      title="Pin to Sidebar"
-                    >
-                      <Pin className="w-5 h-5" />
-                    </button>
-                    <button 
-                      onClick={() => setIsCommandPaletteOpen(false)}
-                      className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 transition-colors ml-2"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                  
-                  {/* 4-column equal grid — columns are defined by the grid, not by content */}
-                  <div className="grid grid-cols-4 divide-x divide-white/5">
-                    {/* Flow */}
-                    <div className={`p-4 ${paletteSearchQuery && !['start', 'end'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : ''}`}>
-                      <h4 className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                        <Zap className="w-3 h-3" /> Flow
-                      </h4>
-                      <div className="space-y-0.5">
-                        <button onClick={() => { handleAddNode('start', 'Start'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-rose-500/10 rounded-md transition-colors group">
-                          <PlaySquare className="w-3.5 h-3.5 shrink-0 text-rose-500/40 group-hover:text-rose-400 transition-colors" />
-                          <span>Start</span>
-                        </button>
-                        <button onClick={() => { handleAddNode('end', 'End'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-rose-500/10 rounded-md transition-colors group">
-                          <Flag className="w-3.5 h-3.5 shrink-0 text-rose-500/40 group-hover:text-rose-400 transition-colors" />
-                          <span>End</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Transform */}
-                    <div className={`p-4 ${paletteSearchQuery && !['agent', 'prompt', 'structured', 'state'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : ''}`}>
-                      <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                        <Cpu className="w-3 h-3" /> Transform
-                      </h4>
-                      <div className="space-y-0.5">
-                        <button onClick={() => { handleAddNode('agentNode', 'Agent'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-blue-500/10 rounded-md transition-colors group">
-                          <Cpu className="w-3.5 h-3.5 shrink-0 text-blue-500/40 group-hover:text-blue-400 transition-colors" />
-                          <span>Agent</span>
-                        </button>
-                        <button onClick={() => { handleAddNode('promptBuilderNode', 'Prompt Builder'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-blue-500/10 rounded-md transition-colors group">
-                          <FileText className="w-3.5 h-3.5 shrink-0 text-blue-500/40 group-hover:text-blue-400 transition-colors" />
-                          <span>Prompt Builder</span>
-                        </button>
-                        <button onClick={() => { handleAddNode('structuredOutputNode', 'Structured Output'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-blue-500/10 rounded-md transition-colors group">
-                          <Code className="w-3.5 h-3.5 shrink-0 text-blue-500/40 group-hover:text-blue-400 transition-colors" />
-                          <span>Structured Output</span>
-                        </button>
-                        <button onClick={() => { handleAddNode('stateTransformNode', 'State Transform'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-blue-500/10 rounded-md transition-colors group">
-                          <Settings className="w-3.5 h-3.5 shrink-0 text-blue-500/40 group-hover:text-blue-400 transition-colors" />
-                          <span>State Transform</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Control */}
-                    <div className={`p-4 ${paletteSearchQuery && !['router', 'loop', 'split', 'merge', 'pause'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : ''}`}>
-                      <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                        <GitBranch className="w-3 h-3" /> Control
-                      </h4>
-                      <div className="space-y-0.5">
-                        <button onClick={() => { handleAddNode('routerNode', 'Router'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-amber-500/10 rounded-md transition-colors group">
-                          <GitBranch className="w-3.5 h-3.5 shrink-0 text-amber-500/40 group-hover:text-amber-400 transition-colors" />
-                          <span>Router</span>
-                        </button>
-                        <button onClick={() => { handleAddNode('loopNode', 'Loop'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-amber-500/10 rounded-md transition-colors group">
-                          <RefreshCw className="w-3.5 h-3.5 shrink-0 text-amber-500/40 group-hover:text-amber-400 transition-colors" />
-                          <span>Loop</span>
-                        </button>
-                        <button onClick={() => { handleAddNode('parallelSplitNode', 'Parallel Split'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-amber-500/10 rounded-md transition-colors group">
-                          <GitCommit className="w-3.5 h-3.5 shrink-0 text-amber-500/40 group-hover:text-amber-400 transition-colors" />
-                          <span>Parallel Split</span>
-                        </button>
-                        <button onClick={() => { handleAddNode('mergeNode', 'Merge'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-amber-500/10 rounded-md transition-colors group">
-                          <GitMerge className="w-3.5 h-3.5 shrink-0 text-amber-500/40 group-hover:text-amber-400 transition-colors" />
-                          <span>Merge</span>
-                        </button>
-                        <button onClick={() => { handleAddNode('humanPauseNode', 'Human Pause'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-amber-500/10 rounded-md transition-colors group">
-                          <PauseCircle className="w-3.5 h-3.5 shrink-0 text-amber-500/40 group-hover:text-amber-400 transition-colors" />
-                          <span>Human Pause</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Integrate */}
-                    <div className={`p-4 ${paletteSearchQuery && !['tool', 'knowledge'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : ''}`}>
-                      <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                        <Blocks className="w-3 h-3" /> Integrate
-                      </h4>
-                      <div className="space-y-0.5">
-                        <button onClick={() => { handleAddNode('toolNode', 'Tool Execution'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-emerald-500/10 rounded-md transition-colors group">
-                          <Wrench className="w-3.5 h-3.5 shrink-0 text-emerald-500/40 group-hover:text-emerald-400 transition-colors" />
-                          <span>Tool Execution</span>
-                        </button>
-                        <button onClick={() => { handleAddNode('knowledgeNode', 'Knowledge Retrieval'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-emerald-500/10 rounded-md transition-colors group">
-                          <Database className="w-3.5 h-3.5 shrink-0 text-emerald-500/40 group-hover:text-emerald-400 transition-colors" />
-                          <span>Knowledge Retrieval</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            )}
           </div>
         )}
         
@@ -877,6 +825,10 @@ const WorkflowBuilderContent: React.FC = () => {
           </div>
         )}
         
+
+
+
+        
         {activeTab === 'executions' && (
           <div className="flex-1 flex items-center justify-center pt-16">
             <div className="text-center">
@@ -889,13 +841,6 @@ const WorkflowBuilderContent: React.FC = () => {
             </div>
           </div>
         )}
-
-        <TriggersPanel 
-          isOpen={isTriggersPanelOpen} 
-          onClose={() => setIsTriggersPanelOpen(false)} 
-          triggers={triggers} 
-          onSave={(newTriggers) => setTriggers(newTriggers)}
-        />
       </div>
     </div>
   );
