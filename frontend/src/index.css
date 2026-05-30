@@ -57,3 +57,10 @@
 .react-flow__background {
   @apply bg-gray-950;
 }
+
+/* Immersive Mode Overrides */
+body.immersive-mode #global-sidebar {
+  margin-left: -16rem;
+  opacity: 0;
+  pointer-events: none;
+}

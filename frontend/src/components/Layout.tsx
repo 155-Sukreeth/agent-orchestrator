@@ -14,7 +14,7 @@ const Layout: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-950 overflow-hidden text-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 flex flex-col border-r border-white/10 glass z-20">
+      <aside id="global-sidebar" className="w-64 flex flex-col border-r border-white/10 glass z-20 transition-all duration-300 ease-in-out">
         <div className="h-16 flex items-center px-6 border-b border-white/5">
           <LayoutDashboard className="w-6 h-6 text-indigo-500 mr-3" />
           <h1 className="text-xl font-semibold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">

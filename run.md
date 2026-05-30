@@ -16,7 +16,7 @@ Docker Compose will automatically orchestrate the Postgres database, Redis cache
    ```
 
 **Services will be available at:**
-- **Frontend UI:** http://localhost:5173
+- **Frontend UI:** http://localhost:3000
 - **Backend API:** http://localhost:8000
 - **Agents API:** http://localhost:8001
 - **Bifrost Dashboard:** http://localhost:8080/workspace/dashboard

@@ -407,63 +407,72 @@ const WorkflowBuilderContent: React.FC = () => {
               onPaneClick={handlePaneClick}
               nodeTypes={nodeTypes}
               fitView
+              fitViewOptions={{ maxZoom: 1, padding: 0.5 }}
               className="bg-transparent"
             >
               <Background color="#374151" gap={16} size={1.5} />
               <Controls className="react-flow__controls border-gray-800 shadow-2xl" />
             </ReactFlow>
 
-            {/* Categorized Node Palette (Floating Left) */}
-            <div className={`absolute top-24 left-4 bottom-24 overflow-y-auto pr-2 custom-scrollbar flex flex-col space-y-4 w-56 transition-opacity duration-300 ${isImmersive ? 'opacity-30 hover:opacity-100' : 'opacity-100'}`}>
+            {/* Floating Top Dock Node Palette */}
+            <div className={`absolute top-20 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-gray-950/90 backdrop-blur-md border border-white/10 p-1.5 rounded-2xl shadow-2xl z-10 transition-opacity duration-300 ${isImmersive ? 'opacity-30 hover:opacity-100' : 'opacity-100'}`}>
               
-              {/* Trigger Group */}
-              <div className="glass-card rounded-xl border border-white/10 overflow-hidden shadow-xl">
-                <div className="bg-purple-900/40 px-3 py-2 border-b border-purple-500/20 text-xs font-semibold text-purple-300 uppercase tracking-wider flex items-center">
+              {/* Trigger */}
+              <div className="relative group">
+                <button className="px-4 py-1.5 rounded-xl bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 font-medium text-sm transition-colors border border-transparent hover:border-purple-500/30">
                   Trigger
-                </div>
-                <div className="p-2 grid grid-cols-2 gap-1">
-                  <button onClick={() => handleAddNode('semanticTriggerNode', 'Semantic')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Semantic</button>
-                  <button onClick={() => handleAddNode('webhookTriggerNode', 'Webhook')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Webhook</button>
-                  <button onClick={() => handleAddNode('schedulerTriggerNode', 'Scheduler')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Scheduler</button>
-                  <button onClick={() => handleAddNode('workflowEventTriggerNode', 'Wf Event')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Wf Event</button>
+                </button>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover:block w-40 z-20">
+                  <div className="bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col p-1">
+                    <button onClick={() => handleAddNode('semanticTriggerNode', 'Semantic')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Semantic</button>
+                    <button onClick={() => handleAddNode('webhookTriggerNode', 'Webhook')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Webhook</button>
+                    <button onClick={() => handleAddNode('schedulerTriggerNode', 'Scheduler')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Scheduler</button>
+                    <button onClick={() => handleAddNode('workflowEventTriggerNode', 'Wf Event')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Workflow Event</button>
+                  </div>
                 </div>
               </div>
 
-              {/* Transform Group */}
-              <div className="glass-card rounded-xl border border-white/10 overflow-hidden shadow-xl">
-                <div className="bg-blue-900/40 px-3 py-2 border-b border-blue-500/20 text-xs font-semibold text-blue-300 uppercase tracking-wider flex items-center">
+              {/* Transform */}
+              <div className="relative group">
+                <button className="px-4 py-1.5 rounded-xl bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 font-medium text-sm transition-colors border border-transparent hover:border-blue-500/30">
                   Transform
-                </div>
-                <div className="p-2 flex flex-col gap-1">
-                  <button onClick={() => handleAddNode('agentNode', 'Agent')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors border border-transparent hover:border-white/5 bg-black/20">Agent</button>
-                  <button onClick={() => handleAddNode('promptBuilderNode', 'Prompt Builder')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors border border-transparent hover:border-white/5 bg-black/20">Prompt Builder</button>
-                  <button onClick={() => handleAddNode('structuredOutputNode', 'Structured Output')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors border border-transparent hover:border-white/5 bg-black/20">Structured Output</button>
-                  <button onClick={() => handleAddNode('stateTransformNode', 'State Transform')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors border border-transparent hover:border-white/5 bg-black/20">State Transform</button>
+                </button>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover:block w-40 z-20">
+                  <div className="bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col p-1">
+                    <button onClick={() => handleAddNode('agentNode', 'Agent')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Agent</button>
+                    <button onClick={() => handleAddNode('promptBuilderNode', 'Prompt Builder')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Prompt Builder</button>
+                    <button onClick={() => handleAddNode('structuredOutputNode', 'Structured Output')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Structured Output</button>
+                    <button onClick={() => handleAddNode('stateTransformNode', 'State Transform')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">State Transform</button>
+                  </div>
                 </div>
               </div>
 
-              {/* Control Group */}
-              <div className="glass-card rounded-xl border border-white/10 overflow-hidden shadow-xl">
-                <div className="bg-amber-900/40 px-3 py-2 border-b border-amber-500/20 text-xs font-semibold text-amber-300 uppercase tracking-wider flex items-center">
+              {/* Control */}
+              <div className="relative group">
+                <button className="px-4 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 font-medium text-sm transition-colors border border-transparent hover:border-amber-500/30">
                   Control
-                </div>
-                <div className="p-2 grid grid-cols-2 gap-1">
-                  <button onClick={() => handleAddNode('routerNode', 'Router')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Router</button>
-                  <button onClick={() => handleAddNode('loopNode', 'Loop')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Loop</button>
-                  <button onClick={() => handleAddNode('parallelSplitNode', 'Split')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Split</button>
-                  <button onClick={() => handleAddNode('mergeNode', 'Merge')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center border border-transparent hover:border-white/5 bg-black/20">Merge</button>
-                  <button onClick={() => handleAddNode('humanPauseNode', 'Pause')} className="px-2 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-md transition-colors text-center col-span-2 border border-transparent hover:border-white/5 bg-black/20">Human Pause</button>
+                </button>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover:block w-40 z-20">
+                  <div className="bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col p-1">
+                    <button onClick={() => handleAddNode('routerNode', 'Router')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Router</button>
+                    <button onClick={() => handleAddNode('loopNode', 'Loop')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Loop</button>
+                    <button onClick={() => handleAddNode('parallelSplitNode', 'Split')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Split</button>
+                    <button onClick={() => handleAddNode('mergeNode', 'Merge')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Merge</button>
+                    <button onClick={() => handleAddNode('humanPauseNode', 'Human Pause')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Human Pause</button>
+                  </div>
                 </div>
               </div>
 
-              {/* Integrate Group */}
-              <div className="glass-card rounded-xl border border-white/10 overflow-hidden shadow-xl">
-                <div className="bg-emerald-900/40 px-3 py-2 border-b border-emerald-500/20 text-xs font-semibold text-emerald-300 uppercase tracking-wider flex items-center">
+              {/* Integrate */}
+              <div className="relative group">
+                <button className="px-4 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 font-medium text-sm transition-colors border border-transparent hover:border-emerald-500/30">
                   Integrate
-                </div>
-                <div className="p-2 flex flex-col gap-1">
-                  <button onClick={() => handleAddNode('toolNode', 'Tool')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors border border-transparent hover:border-white/5 bg-black/20">Tool</button>
-                  <button onClick={() => handleAddNode('knowledgeNode', 'Knowledge')} className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 rounded-md transition-colors border border-transparent hover:border-white/5 bg-black/20">Knowledge</button>
+                </button>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover:block w-40 z-20">
+                  <div className="bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col p-1">
+                    <button onClick={() => handleAddNode('toolNode', 'Tool')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Tool</button>
+                    <button onClick={() => handleAddNode('knowledgeNode', 'Knowledge')} className="px-3 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 rounded-lg text-left transition-colors">Knowledge</button>
+                  </div>
                 </div>
               </div>
               
