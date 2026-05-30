@@ -288,7 +288,7 @@ const WorkflowBuilderContent: React.FC = () => {
     setNodes((nds) =>
       nds.map((n) => {
         if (n.id === nodeId) {
-          n.data = { ...newData };
+          return { ...n, data: { ...newData } };
         }
         return n;
       })

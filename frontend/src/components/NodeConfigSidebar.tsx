@@ -135,11 +135,38 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
 
   const renderToolSelection = (prefix: string = '') => {
     const accessKey = prefix ? `${prefix}_tools_access` : 'tools_access';
-    const listKey = prefix ? `${prefix}_tools_list` : 'tools_list';
+    const listKey = prefix ? `${prefix}_tools_list` : (node.type === 'toolNode' ? 'tool_id' : 'tools_list');
     
     const defaultAccess = node.type === 'toolNode' ? 'custom' : 'all';
     const access = formData[accessKey] || defaultAccess;
-    const selectedTools = formData[listKey] || [];
+    const selectedTools = formData[listKey] || (node.type === 'toolNode' ? '' : []);
+
+    if (node.type === 'toolNode') {
+      return (
+        <div className="mb-6 mt-4">
+          <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider flex items-center mb-2">
+            <Zap className="w-3 h-3 mr-1 text-emerald-500" />
+            Select Tool
+          </label>
+          <select
+            value={selectedTools}
+            onChange={(e) => handleChange(listKey, e.target.value)}
+            className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-emerald-500 outline-none"
+          >
+            <option value="" disabled>Select a tool to execute</option>
+            {Object.entries(groupedTools).map(([groupName, tools]) => (
+              <optgroup key={groupName} label={groupName} className="bg-gray-800 text-gray-300 font-semibold">
+                {tools.map((tool) => (
+                  <option key={tool.id} value={tool.id} className="bg-gray-900 text-white font-normal">
+                    {tool.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+      );
+    }
 
     return (
       <div className="mb-6 mt-4">
@@ -155,17 +182,15 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
           )}
         </div>
 
-        {node.type !== 'toolNode' && (
-          <SegmentedControl
-            value={access}
-            onChange={(val: string) => handleChange(accessKey, val)}
-            options={[
-              { label: 'All Tools', value: 'all' },
-              { label: 'None', value: 'none' },
-              { label: 'Custom', value: 'custom' },
-            ]}
-          />
-        )}
+        <SegmentedControl
+          value={access}
+          onChange={(val: string) => handleChange(accessKey, val)}
+          options={[
+            { label: 'All Tools', value: 'all' },
+            { label: 'None', value: 'none' },
+            { label: 'Custom', value: 'custom' },
+          ]}
+        />
         
         {access === 'custom' && (
           <div className="bg-gray-900 border border-white/5 rounded-xl p-3 max-h-80 overflow-y-auto custom-scrollbar shadow-inner">
@@ -200,6 +225,23 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
                           <span className="text-xs font-medium text-gray-200">{groupName}</span>
                         </div>
                         <div className="flex items-center space-x-2">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (allSelected) {
+                                handleChange(listKey, selectedTools.filter((id: any) => !tools.find((t: any) => t.id === id)));
+                              } else {
+                                const newSelected = [...selectedTools];
+                                tools.forEach((t: any) => {
+                                  if (!newSelected.includes(t.id)) newSelected.push(t.id);
+                                });
+                                handleChange(listKey, newSelected);
+                              }
+                            }}
+                            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${allSelected ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'}`}
+                          >
+                            {allSelected ? 'Deselect All' : 'Select All'}
+                          </button>
                           {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-gray-500" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-500" />}
                         </div>
                       </div>
