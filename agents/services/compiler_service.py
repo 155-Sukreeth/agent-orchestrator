@@ -17,14 +17,24 @@ class CompilerService:
             
             await redis_client.publish_log(run_id, "INFO", "Executing workflow...")
             
-            async for output in graph.astream(initial_state):
-                for node_name, state_update in output.items():
+            async for chunk, mode in graph.astream(initial_state, stream_mode=["custom", "updates"]):
+                if mode == "custom":
+                    # This is an event yielded by our BaseNode StreamWriter
                     await redis_client.publish_log(
                         run_id, 
-                        "INFO", 
-                        f"Node '{node_name}' executed", 
-                        {"state": str(state_update)}
+                        "EVENT", 
+                        f"Custom Event: {chunk.get('type')}", 
+                        chunk
                     )
+                elif mode == "updates":
+                    # This is a standard LangGraph state update at the end of a node
+                    for node_name, state_update in chunk.items():
+                        await redis_client.publish_log(
+                            run_id, 
+                            "INFO", 
+                            f"Node '{node_name}' finished", 
+                            {"state": str(state_update)}
+                        )
                     
             await redis_client.publish_log(run_id, "INFO", "Workflow execution completed successfully")
             await redis_client.set_status(run_id, "completed")

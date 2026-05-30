@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, END
 from agents.graph.state import AgentState
-from agents.graph.nodes.agent_node import build_agent_node
+from agents.graph.nodes.agent_node import AgentNode
 from agents.graph.nodes.router_node import router_node
 from agents.graph.nodes.user_message_node import build_user_message_node
 from agents.graph.nodes.llm_node import build_llm_node
@@ -16,10 +16,8 @@ def compile_graph(graph_definition: dict):
     
     def make_node(node_def):
         if node_def["type"] in ["agent", "reactAgentNode", "agentNode"]:
-            agent_func = build_agent_node(node_def.get("config", {}))
-            async def node_func(state: AgentState):
-                return await agent_func(state)
-            return node_func
+            # Use our new BaseNode class for Agent
+            return AgentNode(node_id=node_def["id"], config=node_def.get("config", {}))
         elif node_def["type"] in ["router", "routerNode"]:
             async def router_func(state: AgentState):
                 return await router_node(state, node_def.get("config", {}))

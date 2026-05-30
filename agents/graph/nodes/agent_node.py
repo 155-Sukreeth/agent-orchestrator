@@ -5,6 +5,8 @@ from agents.config.llm_params import llm_params_registry
 
 logger = logging.getLogger(__name__)
 
+from agents.graph.base_node import BaseNode
+
 def build_messages(state: AgentState, system_prompt: str) -> list[dict]:
     messages = []
     if system_prompt:
@@ -15,14 +17,14 @@ def build_messages(state: AgentState, system_prompt: str) -> list[dict]:
         
     return messages
 
-def build_agent_node(config: dict):
-    llm_config = llm_params_registry.AGENT_DEFAULT.model_copy(update=config.get("llm_params", {}))
-    client = bifrost_client.client
-    
-    tools_list = config.get("tools", [])
-    system_prompt = config.get("system_prompt", "You are a helpful assistant.")
+class AgentNode(BaseNode):
+    async def execute(self, state: AgentState) -> dict:
+        llm_config = llm_params_registry.AGENT_DEFAULT.model_copy(update=self.config.get("llm_params", {}))
+        client = bifrost_client.client
+        
+        tools_list = self.config.get("tools", [])
+        system_prompt = self.config.get("system_prompt", "You are a helpful assistant.")
 
-    async def agent_node(state: AgentState) -> dict:
         try:
             provider, model = llm_config.primary_model.split("/")
         except ValueError:
@@ -52,6 +54,9 @@ def build_agent_node(config: dict):
         if llm_config.tools:
             payload["tools"] = llm_config.tools
 
+        # Emit event before execution
+        self.stream_event("LLM_START", {"model": resolved_model, "provider": provider})
+
         response = await client.chat.completions.create(**payload, timeout=llm_config.timeout)
         
         actual_provider = "unknown"
@@ -63,10 +68,11 @@ def build_agent_node(config: dict):
         if getattr(msg_obj, "tool_calls", None):
             msg_dict["tool_calls"] = [tc.model_dump() for tc in msg_obj.tool_calls]
 
+        # Emit event after generation
+        self.stream_event("LLM_END", {"provider": actual_provider, "content": msg_obj.content})
+
         return {
             "messages": [msg_dict],
             "output": msg_obj.content,
             "metadata": {**state.get("metadata", {}), "provider_used": actual_provider}
         }
-
-    return agent_node
