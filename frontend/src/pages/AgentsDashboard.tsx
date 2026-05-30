@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 const AgentsDashboard: React.FC = () => {
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -14,10 +15,12 @@ const AgentsDashboard: React.FC = () => {
 
   const loadWorkflows = async () => {
     try {
+      setError(null);
       const data = await fetchWorkflows();
       setWorkflows(data);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setError(e.message || 'Failed to load deployed agents');
     } finally {
       setLoading(false);
     }
@@ -38,6 +41,15 @@ const AgentsDashboard: React.FC = () => {
           Create New
         </button>
       </div>
+
+      {error && (
+        <div className="mb-8 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+          <h3 className="font-semibold mb-1 flex items-center">
+            <Settings className="w-4 h-4 mr-2" /> Error
+          </h3>
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
 
       {loading ? (
         <div className="animate-pulse flex space-x-4">

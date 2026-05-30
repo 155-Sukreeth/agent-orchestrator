@@ -14,7 +14,7 @@ class CompilerService:
         try:
             client = HttpClientManager.get_client()
             await client.patch(
-                f"{agent_settings.BACKEND_API_URL}/runs/{run_id}",
+                f"{agent_settings.BACKEND_API_URL}/api/runs/{run_id}",
                 json={
                     "status": status,
                     "output_text": output_text,

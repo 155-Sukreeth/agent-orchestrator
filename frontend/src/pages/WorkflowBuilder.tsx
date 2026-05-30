@@ -191,8 +191,9 @@ const WorkflowBuilderContent: React.FC = () => {
     try {
       const data = await fetchWorkflows();
       setWorkflows(data);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to load workflows list", e);
+      alert("Failed to load workflows list: " + (e.message || 'Unknown error'));
     }
   };
 
@@ -261,8 +262,9 @@ const WorkflowBuilderContent: React.FC = () => {
           setEdges(loadedEdges);
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to load workflow:", e);
+      alert("Failed to load workflow: " + (e.message || 'Unknown error'));
     }
   };
 
@@ -271,8 +273,9 @@ const WorkflowBuilderContent: React.FC = () => {
     try {
       const data = await fetchWorkflowRuns(id);
       setRuns(data);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to load runs:", e);
+      // alert("Failed to load runs: " + (e.message || 'Unknown error')); // Don't alert on polling
     }
   };
 
@@ -310,8 +313,9 @@ const WorkflowBuilderContent: React.FC = () => {
     try {
       const details = await fetchRunDetails(runId);
       setSelectedRun(details);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to load run details:", e);
+      alert("Failed to load run details: " + (e.message || 'Unknown error'));
     }
   };
 
