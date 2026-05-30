@@ -30,8 +30,7 @@ async def update_workflow(workflow_id: int, workflow_in: WorkflowUpdate, db: Asy
 
 @router.delete("/{workflow_id}", response_model=dict)
 async def delete_workflow(workflow_id: int, db: AsyncSession = Depends(get_db)):
-    from backend.repositories.workflow_repository import workflow_repository
-    success = await workflow_repository.delete(db, workflow_id)
+    success = await workflow_service.delete_workflow(db, workflow_id)
     if not success:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Workflow not found")

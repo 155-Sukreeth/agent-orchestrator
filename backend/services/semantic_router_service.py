@@ -11,15 +11,9 @@ class SemanticRouterService:
         """
         Uses the Agents client to run semantic routing logic over active workflows.
         """
-        # Fetch active workflows matching the channel
-        # We perform this logic via SQLAlchemy directly, or via repository.
         from backend.repositories.workflow_repository import workflow_repository
         
-        # A simple query for all active workflows for now, bypassing repo specific method for speed
-        result = await db.execute(
-            select(Workflow).where(Workflow.is_active == True)
-        )
-        active_workflows = result.scalars().all()
+        active_workflows = await workflow_repository.get_active_workflows(db)
         
         # Filter by channel if required
         valid_workflows = []

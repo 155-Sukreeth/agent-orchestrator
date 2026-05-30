@@ -96,8 +96,7 @@ class RunService:
             raise ValueError(f"Run {run_id} not found")
 
         if "logs" in update_data:
-            from backend.models import RunLog
-            from sqlalchemy import insert
+            from backend.repositories.run_log_repository import run_log_repository
             logs_data = update_data.pop("logs")
             if logs_data:
                 log_values = [
@@ -109,7 +108,7 @@ class RunService:
                     }
                     for log_data in logs_data
                 ]
-                await db.execute(insert(RunLog).values(log_values))
+                await run_log_repository.bulk_insert(db, log_values)
 
         await run_repository.update(db, run, update_data)
         return run
