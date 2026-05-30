@@ -96,7 +96,11 @@ const Layout: React.FC = () => {
                 <p className="text-[10px] text-gray-500 truncate">Workspace Owner</p>
               </div>
             </div>
-            <button className="p-2 text-gray-500 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors" title="Logout">
+            <button 
+              onClick={() => window.alert("Logout functionality will be integrated with the Auth service.")}
+              className="p-2 text-gray-500 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors" 
+              title="Logout"
+            >
               <LogOut className="w-4 h-4" />
             </button>
           </div>
@@ -105,13 +109,6 @@ const Layout: React.FC = () => {
 
       {/* Main Content */}
       <main className="flex-1 relative flex flex-col min-w-0 overflow-hidden">
-        {/* Universal Top Right Profile Button */}
-        <div className="absolute top-4 right-6 z-50">
-          <button className="w-9 h-9 rounded-full bg-gray-900/80 backdrop-blur-md flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors shadow-lg" title="Profile">
-            <User className="w-4 h-4 text-gray-300" />
-          </button>
-        </div>
-
         <div className="flex-1 overflow-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-gray-950">
           <Outlet />
         </div>

@@ -509,9 +509,6 @@ const WorkflowBuilderContent: React.FC = () => {
             >
               <Maximize className="w-4 h-4" />
             </button>
-            <button className="w-9 h-9 ml-2 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors shrink-0 shadow-lg" title="Profile">
-              <User className="w-4 h-4 text-indigo-400" />
-            </button>
           </div>
         </div>
 
