@@ -472,6 +472,8 @@ const WorkflowBuilderContent: React.FC = () => {
             {selectedNode && (
               <NodeConfigSidebar 
                 node={selectedNode} 
+                nodes={nodes}
+                edges={edges}
                 onClose={() => setSelectedNodeId(null)}
                 onUpdate={handleUpdateNode}
               />

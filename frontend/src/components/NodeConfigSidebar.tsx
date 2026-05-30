@@ -1,25 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Save, Search, Cpu, ChevronDown, ChevronUp, Database, Check, Zap } from 'lucide-react';
+import { X, Save, Search, Cpu, ChevronDown, ChevronUp, Database, Check, Zap, Plus, Trash2 } from 'lucide-react';
 import { fetchActiveTools, fetchActiveDocumentIntegrations, fetchIntegrationDocuments } from '../api';
 
 interface NodeConfigSidebarProps {
   node: any;
+  nodes?: any[];
+  edges?: any[];
   onClose: () => void;
   onUpdate: (id: string, data: any) => void;
 }
 
-const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, onClose, onUpdate }) => {
+const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [], edges = [], onClose, onUpdate }) => {
   const [formData, setFormData] = useState<any>(node?.data || {});
   
   const [activeTools, setActiveTools] = useState<any[]>([]);
   const [activeIntegrations, setActiveIntegrations] = useState<any[]>([]);
   const [integrationDocs, setIntegrationDocs] = useState<Record<string, any[]>>({});
 
-  // Accordion states
   const [expandedToolGroups, setExpandedToolGroups] = useState<Record<string, boolean>>({});
   const [expandedKnowledgeGroups, setExpandedKnowledgeGroups] = useState<Record<string, boolean>>({});
 
-  // Search states
   const [toolSearchQuery, setToolSearchQuery] = useState('');
   const [knowledgeSearchQuery, setKnowledgeSearchQuery] = useState('');
   const [innerDocSearchQuery, setInnerDocSearchQuery] = useState<Record<string, string>>({});
@@ -100,7 +100,6 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, onClose, on
     const access = formData[accessKey] || defaultAccess;
     const selectedTools = formData[listKey] || [];
 
-    // Group tools by integration_name
     const groupedTools = useMemo(() => {
       const groups: Record<string, any[]> = {};
       const filtered = toolSearchQuery 
@@ -116,7 +115,7 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, onClose, on
     }, [activeTools, toolSearchQuery]);
 
     return (
-      <div className="mb-6">
+      <div className="mb-6 mt-4">
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider flex items-center">
             <Zap className="w-3 h-3 mr-1 text-amber-500" />
@@ -172,37 +171,15 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, onClose, on
                         <div className="flex items-center space-x-2">
                           <Cpu className="w-3.5 h-3.5 text-gray-400" />
                           <span className="text-xs font-medium text-gray-200">{groupName}</span>
-                          <span className="text-[10px] text-gray-500">({tools.length})</span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          {groupSelectedCount > 0 && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.8)]"></span>
-                          )}
                           {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-gray-500" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-500" />}
                         </div>
                       </div>
                       
                       {isExpanded && (
                         <div className="p-2 pt-0 border-t border-white/5 bg-black/40">
-                          <div className="flex justify-end mb-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const toolIds = tools.map(t => t.id);
-                                let updated;
-                                if (allSelected) {
-                                  updated = selectedTools.filter((id:any) => !toolIds.includes(id));
-                                } else {
-                                  updated = [...new Set([...selectedTools, ...toolIds])];
-                                }
-                                handleChange(listKey, updated);
-                              }}
-                              className="text-[10px] text-amber-500/80 hover:text-amber-400 font-medium transition-colors"
-                            >
-                              {allSelected ? 'Deselect All' : 'Select All'}
-                            </button>
-                          </div>
-                          <div className="space-y-1.5">
+                          <div className="space-y-1.5 mt-1">
                             {tools.map(tool => {
                               const isChecked = selectedTools.includes(tool.id);
                               return (
@@ -259,7 +236,7 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, onClose, on
     const selectedIntegrationCount = Object.keys(knowledgeDict).length;
 
     return (
-      <div className="mb-6">
+      <div className="mb-6 mt-4">
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider flex items-center">
             <Database className="w-3 h-3 mr-1 text-indigo-500" />
@@ -436,129 +413,323 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, onClose, on
     );
   };
 
-  const renderAgentFields = () => {
+  const renderLlmParams = () => {
     const llm_params = formData.llm_params || {};
     return (
-      <>
+      <div className="mb-4">
+        <label className="block text-xs font-medium text-gray-400 mb-1">Provider</label>
+        <select
+          value={llm_params.provider || 'gemini'}
+          onChange={(e) => handleLlmChange('provider', e.target.value)}
+          className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-primary outline-none mb-3"
+        >
+          <option value="gemini">Gemini</option>
+          <option value="groq">Groq</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+        </select>
+
+        <label className="block text-xs font-medium text-gray-400 mb-1">Model Name</label>
+        <input
+          type="text"
+          value={llm_params.model_name || 'gemini-3.1-pro'}
+          onChange={(e) => handleLlmChange('model_name', e.target.value)}
+          className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-primary outline-none mb-4"
+          placeholder="e.g. gpt-4o, llama3-70b-8192"
+        />
+
+        <label className="block text-xs font-medium text-gray-400 mb-1 flex justify-between">
+          <span>Temperature</span>
+          <span>{llm_params.temperature || 0}</span>
+        </label>
+        <input
+          type="range"
+          min="0"
+          max="2"
+          step="0.1"
+          value={llm_params.temperature || 0}
+          onChange={(e) => handleLlmChange('temperature', parseFloat(e.target.value))}
+          className="w-full accent-primary"
+        />
+      </div>
+    );
+  };
+
+  // ----- Group Renders -----
+
+  const renderTriggerFields = () => (
+    <>
+      {node.type === 'webhookTriggerNode' && (
         <div className="mb-4">
-          <label className="block text-xs font-medium text-gray-400 mb-1">System Prompt</label>
+          <label className="block text-xs font-medium text-gray-400 mb-1">Webhook Secret (Optional)</label>
+          <input
+            type="text"
+            value={formData.secret || ''}
+            onChange={(e) => handleChange('secret', e.target.value)}
+            className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-purple-500 outline-none"
+            placeholder="Validate incoming requests"
+          />
+        </div>
+      )}
+      {node.type === 'schedulerTriggerNode' && (
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-400 mb-1">Cron Expression</label>
+          <input
+            type="text"
+            value={formData.cron || ''}
+            onChange={(e) => handleChange('cron', e.target.value)}
+            className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-purple-500 outline-none"
+            placeholder="0 * * * *"
+          />
+        </div>
+      )}
+    </>
+  );
+
+  const renderTransformFields = () => (
+    <>
+      {(node.type === 'agentNode' || node.type === 'structuredOutputNode' || node.type === 'promptBuilderNode') && (
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-400 mb-1">System Prompt / Template</label>
           <textarea
-            value={formData.system_prompt || ''}
-            onChange={(e) => handleChange('system_prompt', e.target.value)}
-            className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white h-32 focus:ring-1 focus:ring-primary focus:border-primary custom-scrollbar outline-none"
+            value={formData.system_prompt || formData.template || ''}
+            onChange={(e) => {
+              handleChange('system_prompt', e.target.value);
+              handleChange('template', e.target.value); // fallback
+            }}
+            className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white h-32 focus:ring-1 focus:ring-blue-500 custom-scrollbar outline-none"
             placeholder="You are a helpful assistant..."
           />
         </div>
+      )}
+
+      {(node.type === 'agentNode' || node.type === 'structuredOutputNode') && renderLlmParams()}
+      {(node.type === 'agentNode') && renderToolSelection()}
+      {(node.type === 'agentNode') && renderKnowledgeSelection()}
+
+      {node.type === 'structuredOutputNode' && (
         <div className="mb-4">
-          <label className="block text-xs font-medium text-gray-400 mb-1">Primary Model</label>
-          <select
-            value={llm_params.primary_model || 'gemini/gemini-3.1-pro'}
-            onChange={(e) => handleLlmChange('primary_model', e.target.value)}
-            className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-primary outline-none"
-          >
-            <option value="gemini/gemini-3.1-pro">Gemini 3.1 Pro</option>
-            <option value="gemini/gemini-3.5-flash">Gemini 3.5 Flash</option>
-            <option value="gemini/gemini-2.5-pro">Gemini 2.5 Pro</option>
-            <option value="gemini/gemini-2.5-flash">Gemini 2.5 Flash</option>
-            <option value="gemini/gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite</option>
-            <option value="gemini/gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
-            <option value="groq/llama3-70b-8192">Llama 3 70B (Groq)</option>
-          </select>
-        </div>
-        <div className="mb-6">
-          <label className="block text-xs font-medium text-gray-400 mb-1 flex justify-between">
-            <span>Temperature</span>
-            <span>{llm_params.temperature || 0}</span>
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="2"
-            step="0.1"
-            value={llm_params.temperature || 0}
-            onChange={(e) => handleLlmChange('temperature', parseFloat(e.target.value))}
-            className="w-full accent-primary"
+          <label className="block text-xs font-medium text-gray-400 mb-1">JSON Schema (Output format)</label>
+          <textarea
+            value={formData.schema || ''}
+            onChange={(e) => handleChange('schema', e.target.value)}
+            className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-[10px] font-mono text-gray-300 h-32 focus:ring-1 focus:ring-blue-500 custom-scrollbar outline-none"
+            placeholder='{"type": "object", "properties": {...}}'
           />
         </div>
+      )}
+
+      {node.type === 'stateTransformNode' && (
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-400 mb-2">Operations</label>
+          <div className="space-y-2">
+            {(formData.operations || []).map((op: any, index: number) => (
+              <div key={index} className="flex flex-col bg-black/40 border border-white/5 rounded p-2 gap-2 relative">
+                <button 
+                  onClick={() => {
+                    const ops = [...formData.operations];
+                    ops.splice(index, 1);
+                    handleChange('operations', ops);
+                  }}
+                  className="absolute top-2 right-2 text-gray-500 hover:text-red-400"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+                
+                <select
+                  value={op.op || 'set'}
+                  onChange={(e) => {
+                    const ops = [...formData.operations];
+                    ops[index].op = e.target.value;
+                    handleChange('operations', ops);
+                  }}
+                  className="w-24 bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none"
+                >
+                  <option value="set">Set</option>
+                  <option value="copy">Copy</option>
+                  <option value="delete">Delete</option>
+                  <option value="append">Append</option>
+                </select>
+                
+                <input
+                  type="text"
+                  placeholder="Target Key"
+                  value={op.key || op.to || ''}
+                  onChange={(e) => {
+                    const ops = [...formData.operations];
+                    ops[index].key = e.target.value;
+                    handleChange('operations', ops);
+                  }}
+                  className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none"
+                />
+                
+                {op.op !== 'delete' && (
+                  <input
+                    type="text"
+                    placeholder={op.op === 'copy' ? "Source Key" : "Value"}
+                    value={op.value || op.from || ''}
+                    onChange={(e) => {
+                      const ops = [...formData.operations];
+                      ops[index].value = e.target.value;
+                      handleChange('operations', ops);
+                    }}
+                    className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none"
+                  />
+                )}
+              </div>
+            ))}
+            <button 
+              onClick={() => {
+                const ops = formData.operations || [];
+                handleChange('operations', [...ops, { op: 'set', key: '', value: '' }]);
+              }}
+              className="flex items-center text-xs text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              <Plus className="w-3 h-3 mr-1" /> Add Operation
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  const renderControlFields = () => {
+    // Determine outgoing targets visually
+    const outgoingEdges = edges.filter(e => e.source === node.id);
+    const outgoingTargets = outgoingEdges.map(e => e.target);
+    
+    // Determine incoming sources visually
+    const incomingEdges = edges.filter(e => e.target === node.id);
+    const incomingSources = incomingEdges.map(e => e.source);
+
+    return (
+      <>
+        {node.type === 'routerNode' && (
+          <>
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-400 mb-1">Condition Type</label>
+              <select
+                value={formData.condition_type || 'llm_judge'}
+                onChange={(e) => handleChange('condition_type', e.target.value)}
+                className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-amber-500 outline-none mb-3"
+              >
+                <option value="llm_judge">LLM Judge</option>
+                <option value="regex_match">Regex Match</option>
+                <option value="state_equals">State Equals</option>
+                <option value="contains_keyword">Contains Keyword</option>
+              </select>
+
+              {formData.condition_type === 'llm_judge' && renderLlmParams()}
+
+              <label className="block text-xs font-medium text-gray-400 mb-1">Condition Logic</label>
+              <textarea
+                value={formData.condition || ''}
+                onChange={(e) => handleChange('condition', e.target.value)}
+                className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white h-24 focus:ring-1 focus:ring-amber-500 custom-scrollbar outline-none"
+                placeholder="e.g., Return 'refund' if asking about refunds, else 'support'"
+              />
+            </div>
+            
+            <div className="mb-4 p-2 bg-black/30 border border-white/5 rounded-lg">
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Detected Outgoing Branches</label>
+              {outgoingTargets.length === 0 ? (
+                <p className="text-[10px] text-gray-600">No outgoing edges connected yet.</p>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {outgoingTargets.map(t => (
+                    <span key={t} className="text-[10px] bg-amber-900/30 text-amber-300 border border-amber-500/20 px-1.5 py-0.5 rounded">{t}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {node.type === 'loopNode' && (
+          <>
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-400 mb-1">Max Iterations</label>
+              <input
+                type="number"
+                value={formData.max_iterations || 5}
+                onChange={(e) => handleChange('max_iterations', parseInt(e.target.value))}
+                className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-amber-500 outline-none"
+              />
+            </div>
+            
+            <div className="mb-4 p-2 bg-black/30 border border-white/5 rounded-lg">
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Loop Targets (Outgoing Edges)</label>
+              {outgoingTargets.length === 0 ? (
+                <p className="text-[10px] text-gray-600">Connect edges to define loop/exit.</p>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {outgoingTargets.map(t => (
+                    <span key={t} className="text-[10px] bg-amber-900/30 text-amber-300 border border-amber-500/20 px-1.5 py-0.5 rounded">{t}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {node.type === 'mergeNode' && (
+          <div className="mb-4 p-2 bg-black/30 border border-white/5 rounded-lg">
+            <label className="block text-xs font-semibold text-gray-400 mb-1">Wait For (Incoming Edges)</label>
+            {incomingSources.length === 0 ? (
+              <p className="text-[10px] text-gray-600">Connect edges to wait for.</p>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {incomingSources.map(s => (
+                  <span key={s} className="text-[10px] bg-amber-900/30 text-amber-300 border border-amber-500/20 px-1.5 py-0.5 rounded">{s}</span>
+                ))}
+              </div>
+            )}
+            <p className="text-[10px] text-gray-500 mt-2 italic">Merge nodes automatically wait for all connected incoming paths to complete.</p>
+          </div>
+        )}
         
-        {renderToolSelection()}
-        {renderKnowledgeSelection()}
+        {node.type === 'humanPauseNode' && (
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-400 mb-1">Approval Prompt</label>
+            <textarea
+              value={formData.approval_prompt || ''}
+              onChange={(e) => handleChange('approval_prompt', e.target.value)}
+              className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white h-24 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 custom-scrollbar outline-none"
+              placeholder="e.g. Approve this request?"
+            />
+          </div>
+        )}
       </>
     );
   };
 
-  const renderUserMessageFields = () => (
-    <div className="mb-4">
-      <label className="block text-xs font-medium text-gray-400 mb-1">State Key Mapping</label>
-      <input
-        type="text"
-        value={formData.input_key || 'message'}
-        onChange={(e) => handleChange('input_key', e.target.value)}
-        className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-purple-500 outline-none"
-        placeholder="e.g. user_message"
-      />
-      <p className="text-xs text-gray-500 mt-2">The key in LangGraph state where this input will be stored.</p>
-    </div>
-  );
-
-  const renderKnowledgeFields = () => (
+  const renderIntegrateFields = () => (
     <>
-      {renderKnowledgeSelection()}
-      <div className="mb-4">
-        <label className="block text-xs font-medium text-gray-400 mb-1">Top K Results</label>
-        <input
-          type="number"
-          min="1"
-          max="20"
-          value={formData.top_k || 3}
-          onChange={(e) => handleChange('top_k', parseInt(e.target.value))}
-          className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-indigo-500 outline-none"
-        />
-      </div>
-    </>
-  );
-
-  const renderHumanPauseFields = () => (
-    <div className="mb-4">
-      <label className="block text-xs font-medium text-gray-400 mb-1">Approval Prompt</label>
-      <textarea
-        value={formData.approval_prompt || ''}
-        onChange={(e) => handleChange('approval_prompt', e.target.value)}
-        className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white h-24 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 custom-scrollbar outline-none"
-        placeholder="e.g. Approve this refund request?"
-      />
-    </div>
-  );
-
-  const renderRouterFields = () => (
-    <>
-      <div className="mb-4">
-        <label className="block text-xs font-medium text-gray-400 mb-1">Condition Type</label>
-        <select
-          value={formData.condition_type || 'llm_judge'}
-          onChange={(e) => handleChange('condition_type', e.target.value)}
-          className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-amber-500 outline-none"
-        >
-          <option value="llm_judge">LLM Judge</option>
-          <option value="contains_keyword">Contains Keyword</option>
-        </select>
-      </div>
-      <div className="mb-4">
-        <label className="block text-xs font-medium text-gray-400 mb-1">Routing Condition</label>
-        <textarea
-          value={formData.condition || ''}
-          onChange={(e) => handleChange('condition', e.target.value)}
-          className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white h-24 focus:ring-1 focus:ring-amber-500 focus:border-amber-500 custom-scrollbar outline-none"
-          placeholder="e.g., Did the user ask about billing?"
-        />
-      </div>
+      {node.type === 'toolNode' && renderToolSelection()}
+      {node.type === 'knowledgeNode' && (
+        <>
+          {renderKnowledgeSelection()}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-400 mb-1">Top K Results</label>
+            <input
+              type="number"
+              min="1"
+              max="20"
+              value={formData.top_k || 3}
+              onChange={(e) => handleChange('top_k', parseInt(e.target.value))}
+              className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-emerald-500 outline-none"
+            />
+          </div>
+        </>
+      )}
     </>
   );
 
   return (
     <div className="w-96 border-l border-gray-800 bg-[#0a0a0a] flex flex-col h-full shadow-2xl z-20">
       <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-black/40 backdrop-blur-md">
-        <h3 className="font-semibold text-white truncate pr-2 text-sm tracking-wide">
+        <h3 className="font-semibold text-white truncate pr-2 text-sm tracking-wide flex items-center">
+          <span className="text-gray-400 font-mono text-[10px] mr-2 px-1 bg-white/5 rounded border border-white/10">{node.id}</span>
           {formData.label || 'Node Configuration'}
         </h3>
         <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-md text-gray-400 transition-colors">
@@ -579,12 +750,11 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, onClose, on
 
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-800 to-transparent mb-6"></div>
 
-        {node.type === 'userMessageNode' && renderUserMessageFields()}
-        {node.type === 'knowledgeNode' && renderKnowledgeFields()}
-        {node.type === 'humanPauseNode' && renderHumanPauseFields()}
-        {(node.type === 'agentNode' || node.type === 'reactAgentNode' || node.type === 'llmNode') && renderAgentFields()}
-        {node.type === 'routerNode' && renderRouterFields()}
-        {node.type === 'toolNode' && renderToolSelection()}
+        {node.type.includes('Trigger') && renderTriggerFields()}
+        {(node.type === 'agentNode' || node.type === 'structuredOutputNode' || node.type === 'promptBuilderNode' || node.type === 'stateTransformNode') && renderTransformFields()}
+        {(node.type === 'routerNode' || node.type === 'loopNode' || node.type === 'parallelSplitNode' || node.type === 'mergeNode' || node.type === 'humanPauseNode') && renderControlFields()}
+        {(node.type === 'toolNode' || node.type === 'knowledgeNode') && renderIntegrateFields()}
+        
       </div>
 
       <div className="p-4 border-t border-gray-800 bg-black/40 backdrop-blur-md">
