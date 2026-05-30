@@ -15,7 +15,7 @@ import { AgentNode, PromptBuilderNode, StructuredOutputNode, StateTransformNode 
 import { RouterNode, LoopNode, ParallelSplitNode, MergeNode, HumanPauseNode } from '../components/nodes/control/ControlNodes';
 import { ToolNode, KnowledgeNode } from '../components/nodes/integrate/IntegrateNodes';
 import NodeConfigSidebar from '../components/NodeConfigSidebar';
-import { Network, Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, ChevronRight, X, Search, Zap, Cpu, GitBranch, Blocks, MessageSquare, Globe, Clock, FileText, Code, Settings, RefreshCw, GitCommit, GitMerge, PauseCircle, Wrench, Database, Pin, PinOff } from 'lucide-react';
+import { Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, X, Search, Zap, Cpu, GitBranch, Blocks, MessageSquare, Globe, Clock, FileText, Code, Settings, RefreshCw, GitCommit, GitMerge, PauseCircle, Wrench, Database, Pin, PinOff } from 'lucide-react';
 import { createWorkflow, fetchWorkflow, updateWorkflow, fetchWorkflows } from '../api';
 
 const initialNodes: Node[] = [];
@@ -33,6 +33,7 @@ const WorkflowBuilderContent: React.FC = () => {
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'editor' | 'executions'>('editor');
   const [isImmersive, setIsImmersive] = useState(false);
+  const [isActiveStatus, setIsActiveStatus] = useState(false);
   const [workflowName, setWorkflowName] = useState("New Workflow Draft");
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [paletteSearchQuery, setPaletteSearchQuery] = useState("");
