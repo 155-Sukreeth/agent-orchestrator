@@ -189,6 +189,15 @@ class AgentTool(Base):
     
     integration = relationship("Integration", back_populates="tools")
 
+class DefaultTool(Base):
+    __tablename__ = "default_tools"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    description = Column(String)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
 class KnowledgeChunk(Base):
     __tablename__ = "knowledge_chunks"
     id = Column(Integer, primary_key=True, index=True)

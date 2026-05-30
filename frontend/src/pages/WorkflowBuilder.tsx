@@ -173,6 +173,12 @@ const WorkflowBuilderContent: React.FC = () => {
             if (n.type === 'router') uiType = 'routerNode';
             if (n.type === 'tool') uiType = 'toolNode';
             
+            if (n.type && n.type.includes('_')) {
+                uiType = n.type.replace(/_([a-z])/g, (g: string) => g[1].toUpperCase()) + 'Node';
+            } else if (n.type && !n.type.endsWith('Node')) {
+                uiType = n.type + 'Node';
+            }
+            
             return {
               id: n.id,
               type: uiType,
@@ -291,10 +297,18 @@ const WorkflowBuilderContent: React.FC = () => {
 
   const handleDeploy = async (saveAsActive: boolean, silent: boolean = false) => {
     try {
+      const convertTypeToSnakeCase = (type: string) => {
+        const stripped = type.endsWith('Node') ? type.slice(0, -4) : type;
+        return stripped.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      };
+
+      const triggerNode = nodes.find(n => n.type.toLowerCase().includes('trigger') || n.type === 'startNode');
+      const entry_node = triggerNode ? triggerNode.id : (nodes.length > 0 ? nodes[0].id : '');
+
       const graphDefinition = {
         nodes: nodes.map(n => {
-          let backendType = n.type;
-          if (n.type === 'agentNode') backendType = 'agent';
+          let backendType = convertTypeToSnakeCase(n.type);
+          if (n.type === 'agentNode') backendType = 'agent'; // legacy fallback mapping
           if (n.type === 'routerNode') backendType = 'router';
           if (n.type === 'toolNode') backendType = 'tool';
           
@@ -310,7 +324,7 @@ const WorkflowBuilderContent: React.FC = () => {
           target: e.target,
           condition: e.label || undefined
         })),
-        entry_node: 'start'
+        entry_node
       };
 
       if (id && id !== 'new') {

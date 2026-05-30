@@ -32,7 +32,7 @@ async def create_integration(integration_in: IntegrationCreate, db: AsyncSession
     await db.refresh(db_integration)
     return db_integration
 
-from backend.models import IntegrationType, AgentTool, DOCUMENT_INTEGRATION_TYPES
+from backend.models import IntegrationType, AgentTool, DefaultTool, DOCUMENT_INTEGRATION_TYPES
 
 @router.get("/active/tools")
 async def get_active_tools(db: AsyncSession = Depends(get_db)):
@@ -46,6 +46,15 @@ async def get_active_tools(db: AsyncSession = Depends(get_db)):
         tool_dict = {column.name: getattr(tool, column.name) for column in tool.__table__.columns}
         tool_dict["integration_name"] = integration_name
         tools.append(tool_dict)
+        
+    default_result = await db.execute(
+        select(DefaultTool).where(DefaultTool.is_active == True)
+    )
+    for d_tool in default_result.scalars().all():
+        d_tool_dict = {column.name: getattr(d_tool, column.name) for column in d_tool.__table__.columns}
+        d_tool_dict["integration_name"] = "System Default"
+        tools.append(d_tool_dict)
+        
     return tools
 
 @router.get("/active/documents")
