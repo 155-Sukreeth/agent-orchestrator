@@ -87,8 +87,11 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
     setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
+  const hasChanges = JSON.stringify(formData) !== JSON.stringify(node?.data || {});
+
   const handleSave = () => {
     onUpdate(node.id, formData);
+    onClose();
   };
 
   const handleLlmChange = (field: string, value: any) => {
@@ -831,7 +834,12 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
       <div className="p-4 border-t border-gray-800 bg-black/40 backdrop-blur-md space-y-2">
         <button 
           onClick={handleSave}
-          className="w-full bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center border border-primary/20 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]"
+          disabled={!hasChanges}
+          className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center border ${
+            hasChanges 
+              ? 'bg-primary/10 hover:bg-primary/20 text-primary border-primary/20 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]' 
+              : 'bg-white/5 text-gray-500 border-white/5 cursor-not-allowed'
+          }`}
         >
           <Save className="w-4 h-4 mr-2" />
           Apply Changes
