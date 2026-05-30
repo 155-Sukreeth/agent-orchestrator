@@ -15,7 +15,7 @@ import { AgentNode, PromptBuilderNode, StructuredOutputNode, StateTransformNode 
 import { RouterNode, LoopNode, ParallelSplitNode, MergeNode, HumanPauseNode } from '../components/nodes/control/ControlNodes';
 import { ToolNode, KnowledgeNode } from '../components/nodes/integrate/IntegrateNodes';
 import NodeConfigSidebar from '../components/NodeConfigSidebar';
-import { Network, Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, ChevronRight, X, Search } from 'lucide-react';
+import { Network, Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, ChevronRight, X, Search, Zap, Cpu, GitBranch, Blocks, MessageSquare, Globe, Clock, FileText, Code, Settings, RefreshCw, GitCommit, GitMerge, PauseCircle, Wrench, Database } from 'lucide-react';
 import { createWorkflow, fetchWorkflow, updateWorkflow, fetchWorkflows } from '../api';
 
 const initialNodes: Node[] = [];
@@ -478,55 +478,100 @@ const WorkflowBuilderContent: React.FC = () => {
                     {/* Trigger */}
                     <div className={paletteSearchQuery && !['semantic', 'webhook', 'scheduler', 'event'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : 'block'}>
                       <h4 className="text-[11px] font-bold text-purple-400 uppercase tracking-wider mb-3 flex items-center">
-                        <div className="w-2 h-2 rounded-full bg-purple-500 mr-2 shadow-[0_0_8px_rgba(168,85,247,0.5)]"></div>
+                        <Zap className="w-3.5 h-3.5 mr-1.5" />
                         Trigger
                       </h4>
                       <div className="space-y-1.5">
-                        <button onClick={() => { handleAddNode('semanticTriggerNode', 'Semantic'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-purple-500/10 rounded-xl transition-colors border border-transparent hover:border-purple-500/20">Semantic Router</button>
-                        <button onClick={() => { handleAddNode('webhookTriggerNode', 'Webhook'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-purple-500/10 rounded-xl transition-colors border border-transparent hover:border-purple-500/20">Webhook</button>
-                        <button onClick={() => { handleAddNode('schedulerTriggerNode', 'Scheduler'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-purple-500/10 rounded-xl transition-colors border border-transparent hover:border-purple-500/20">Scheduler</button>
-                        <button onClick={() => { handleAddNode('workflowEventTriggerNode', 'Wf Event'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-purple-500/10 rounded-xl transition-colors border border-transparent hover:border-purple-500/20">Workflow Event</button>
+                        <button onClick={() => { handleAddNode('semanticTriggerNode', 'Semantic'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-purple-500/10 rounded-xl transition-colors border border-transparent hover:border-purple-500/20 group">
+                          <MessageSquare className="w-4 h-4 mr-3 text-purple-500/50 group-hover:text-purple-400 transition-colors" />
+                          Semantic Router
+                        </button>
+                        <button onClick={() => { handleAddNode('webhookTriggerNode', 'Webhook'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-purple-500/10 rounded-xl transition-colors border border-transparent hover:border-purple-500/20 group">
+                          <Globe className="w-4 h-4 mr-3 text-purple-500/50 group-hover:text-purple-400 transition-colors" />
+                          Webhook
+                        </button>
+                        <button onClick={() => { handleAddNode('schedulerTriggerNode', 'Scheduler'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-purple-500/10 rounded-xl transition-colors border border-transparent hover:border-purple-500/20 group">
+                          <Clock className="w-4 h-4 mr-3 text-purple-500/50 group-hover:text-purple-400 transition-colors" />
+                          Scheduler
+                        </button>
+                        <button onClick={() => { handleAddNode('workflowEventTriggerNode', 'Wf Event'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-purple-500/10 rounded-xl transition-colors border border-transparent hover:border-purple-500/20 group">
+                          <WorkflowIcon className="w-4 h-4 mr-3 text-purple-500/50 group-hover:text-purple-400 transition-colors" />
+                          Workflow Event
+                        </button>
                       </div>
                     </div>
 
                     {/* Transform */}
                     <div className={paletteSearchQuery && !['agent', 'prompt', 'structured', 'state'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : 'block'}>
                       <h4 className="text-[11px] font-bold text-blue-400 uppercase tracking-wider mb-3 flex items-center">
-                        <div className="w-2 h-2 rounded-full bg-blue-500 mr-2 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+                        <Cpu className="w-3.5 h-3.5 mr-1.5" />
                         Transform
                       </h4>
                       <div className="space-y-1.5">
-                        <button onClick={() => { handleAddNode('agentNode', 'Agent'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-blue-500/10 rounded-xl transition-colors border border-transparent hover:border-blue-500/20">Agent</button>
-                        <button onClick={() => { handleAddNode('promptBuilderNode', 'Prompt Builder'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-blue-500/10 rounded-xl transition-colors border border-transparent hover:border-blue-500/20">Prompt Builder</button>
-                        <button onClick={() => { handleAddNode('structuredOutputNode', 'Structured Output'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-blue-500/10 rounded-xl transition-colors border border-transparent hover:border-blue-500/20">Structured Output</button>
-                        <button onClick={() => { handleAddNode('stateTransformNode', 'State Transform'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-blue-500/10 rounded-xl transition-colors border border-transparent hover:border-blue-500/20">State Transform</button>
+                        <button onClick={() => { handleAddNode('agentNode', 'Agent'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-blue-500/10 rounded-xl transition-colors border border-transparent hover:border-blue-500/20 group">
+                          <Cpu className="w-4 h-4 mr-3 text-blue-500/50 group-hover:text-blue-400 transition-colors" />
+                          Agent
+                        </button>
+                        <button onClick={() => { handleAddNode('promptBuilderNode', 'Prompt Builder'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-blue-500/10 rounded-xl transition-colors border border-transparent hover:border-blue-500/20 group">
+                          <FileText className="w-4 h-4 mr-3 text-blue-500/50 group-hover:text-blue-400 transition-colors" />
+                          Prompt Builder
+                        </button>
+                        <button onClick={() => { handleAddNode('structuredOutputNode', 'Structured Output'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-blue-500/10 rounded-xl transition-colors border border-transparent hover:border-blue-500/20 group">
+                          <Code className="w-4 h-4 mr-3 text-blue-500/50 group-hover:text-blue-400 transition-colors" />
+                          Structured Output
+                        </button>
+                        <button onClick={() => { handleAddNode('stateTransformNode', 'State Transform'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-blue-500/10 rounded-xl transition-colors border border-transparent hover:border-blue-500/20 group">
+                          <Settings className="w-4 h-4 mr-3 text-blue-500/50 group-hover:text-blue-400 transition-colors" />
+                          State Transform
+                        </button>
                       </div>
                     </div>
 
                     {/* Control */}
                     <div className={paletteSearchQuery && !['router', 'loop', 'split', 'merge', 'pause'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : 'block'}>
                       <h4 className="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center">
-                        <div className="w-2 h-2 rounded-full bg-amber-500 mr-2 shadow-[0_0_8px_rgba(245,158,11,0.5)]"></div>
+                        <GitBranch className="w-3.5 h-3.5 mr-1.5" />
                         Control
                       </h4>
                       <div className="space-y-1.5">
-                        <button onClick={() => { handleAddNode('routerNode', 'Router'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-xl transition-colors border border-transparent hover:border-amber-500/20">Router</button>
-                        <button onClick={() => { handleAddNode('loopNode', 'Loop'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-xl transition-colors border border-transparent hover:border-amber-500/20">Loop</button>
-                        <button onClick={() => { handleAddNode('parallelSplitNode', 'Parallel Split'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-xl transition-colors border border-transparent hover:border-amber-500/20">Parallel Split</button>
-                        <button onClick={() => { handleAddNode('mergeNode', 'Merge'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-xl transition-colors border border-transparent hover:border-amber-500/20">Merge</button>
-                        <button onClick={() => { handleAddNode('humanPauseNode', 'Human Pause'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-xl transition-colors border border-transparent hover:border-amber-500/20">Human Pause</button>
+                        <button onClick={() => { handleAddNode('routerNode', 'Router'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-xl transition-colors border border-transparent hover:border-amber-500/20 group">
+                          <GitBranch className="w-4 h-4 mr-3 text-amber-500/50 group-hover:text-amber-400 transition-colors" />
+                          Router
+                        </button>
+                        <button onClick={() => { handleAddNode('loopNode', 'Loop'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-xl transition-colors border border-transparent hover:border-amber-500/20 group">
+                          <RefreshCw className="w-4 h-4 mr-3 text-amber-500/50 group-hover:text-amber-400 transition-colors" />
+                          Loop
+                        </button>
+                        <button onClick={() => { handleAddNode('parallelSplitNode', 'Parallel Split'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-xl transition-colors border border-transparent hover:border-amber-500/20 group">
+                          <GitCommit className="w-4 h-4 mr-3 text-amber-500/50 group-hover:text-amber-400 transition-colors" />
+                          Parallel Split
+                        </button>
+                        <button onClick={() => { handleAddNode('mergeNode', 'Merge'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-xl transition-colors border border-transparent hover:border-amber-500/20 group">
+                          <GitMerge className="w-4 h-4 mr-3 text-amber-500/50 group-hover:text-amber-400 transition-colors" />
+                          Merge
+                        </button>
+                        <button onClick={() => { handleAddNode('humanPauseNode', 'Human Pause'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-amber-500/10 rounded-xl transition-colors border border-transparent hover:border-amber-500/20 group">
+                          <PauseCircle className="w-4 h-4 mr-3 text-amber-500/50 group-hover:text-amber-400 transition-colors" />
+                          Human Pause
+                        </button>
                       </div>
                     </div>
 
                     {/* Integrate */}
                     <div className={paletteSearchQuery && !['tool', 'knowledge'].some(k => k.includes(paletteSearchQuery.toLowerCase())) ? 'hidden' : 'block'}>
                       <h4 className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-3 flex items-center">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 mr-2 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                        <Blocks className="w-3.5 h-3.5 mr-1.5" />
                         Integrate
                       </h4>
                       <div className="space-y-1.5">
-                        <button onClick={() => { handleAddNode('toolNode', 'Tool Execution'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-emerald-500/10 rounded-xl transition-colors border border-transparent hover:border-emerald-500/20">Tool Execution</button>
-                        <button onClick={() => { handleAddNode('knowledgeNode', 'Knowledge Retrieval'); setIsCommandPaletteOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-emerald-500/10 rounded-xl transition-colors border border-transparent hover:border-emerald-500/20">Knowledge Retrieval</button>
+                        <button onClick={() => { handleAddNode('toolNode', 'Tool Execution'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-emerald-500/10 rounded-xl transition-colors border border-transparent hover:border-emerald-500/20 group">
+                          <Wrench className="w-4 h-4 mr-3 text-emerald-500/50 group-hover:text-emerald-400 transition-colors" />
+                          Tool Execution
+                        </button>
+                        <button onClick={() => { handleAddNode('knowledgeNode', 'Knowledge Retrieval'); setIsCommandPaletteOpen(false); }} className="w-full flex items-center px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-emerald-500/10 rounded-xl transition-colors border border-transparent hover:border-emerald-500/20 group">
+                          <Database className="w-4 h-4 mr-3 text-emerald-500/50 group-hover:text-emerald-400 transition-colors" />
+                          Knowledge Retrieval
+                        </button>
                       </div>
                     </div>
 
