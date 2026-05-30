@@ -795,7 +795,7 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
   return (
     <div 
       style={{ width: sidebarWidth }}
-      className="absolute right-0 top-0 bottom-0 bg-[#0a0a0a] border-l border-gray-800 flex flex-col shadow-2xl z-20 animate-in slide-in-from-right-8 duration-300"
+      className="absolute right-0 top-0 bottom-0 bg-[#0a0a0a] border-l border-gray-800 flex flex-col shadow-2xl z-20"
     >
       <div 
         className="absolute left-0 top-0 bottom-0 w-2 -translate-x-1/2 cursor-col-resize hover:bg-indigo-500/50 z-50 transition-colors"

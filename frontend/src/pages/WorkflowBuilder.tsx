@@ -356,6 +356,21 @@ const WorkflowBuilderContent: React.FC = () => {
     }
   };
 
+  const [activeSidebarNode, setActiveSidebarNode] = useState<any>(null);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(false);
+
+  useEffect(() => {
+    const selectedNode = nodes.find(n => n.id === selectedNodeId);
+    if (selectedNode) {
+      setActiveSidebarNode(selectedNode);
+      setIsSidebarVisible(true);
+    } else {
+      setIsSidebarVisible(false);
+      const timer = setTimeout(() => setActiveSidebarNode(null), 500); // Wait for transition
+      return () => clearTimeout(timer);
+    }
+  }, [selectedNodeId, nodes]);
+
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
   const deployedWorkflows = workflows.filter(w => w.is_active);
@@ -369,7 +384,7 @@ const WorkflowBuilderContent: React.FC = () => {
           width: isImmersive ? undefined : workspacePanelWidth, 
           marginLeft: isImmersive ? -workspacePanelWidth : 0 
         }}
-        className={`relative border-r border-white/5 bg-gray-950/50 flex flex-col shrink-0 transition-all duration-300 ease-in-out z-20`}
+        className={`relative border-r border-white/5 bg-gray-950/50 flex flex-col shrink-0 transition-all duration-500 ease-in-out z-20`}
       >
         {/* Resize Handle */}
         <div 
@@ -436,7 +451,7 @@ const WorkflowBuilderContent: React.FC = () => {
         
         {/* Top Header */}
         <div 
-          className={`absolute top-0 left-0 right-0 p-4 z-10 flex justify-between items-center bg-gray-950/80 backdrop-blur-sm border-b border-white/5 transition-transform duration-300 ${
+          className={`absolute top-0 left-0 right-0 p-4 z-10 flex justify-between items-center bg-gray-950/80 backdrop-blur-sm border-b border-white/5 transition-transform duration-500 ${
             isImmersive ? '-translate-y-full' : 'translate-y-0'
           }`}
         >
@@ -514,7 +529,7 @@ const WorkflowBuilderContent: React.FC = () => {
             
             {/* Pinned Node Palette Sidebar */}
             {isNodePalettePinned && (
-              <div style={{ width: leftPanelWidth }} className="relative border-r border-gray-800 bg-[#0a0a0a] flex flex-col z-20 shrink-0 h-full shadow-2xl">
+              <div style={{ width: leftPanelWidth }} className="relative border-r border-gray-800 bg-[#0a0a0a] flex flex-col z-20 shrink-0 h-full shadow-2xl transition-all duration-500 ease-in-out">
                 {/* Resize Handle */}
                 <div 
                   className="absolute right-0 top-0 bottom-0 w-2 translate-x-1/2 cursor-col-resize hover:bg-indigo-500/50 z-50 transition-colors"
@@ -668,16 +683,18 @@ const WorkflowBuilderContent: React.FC = () => {
             )}
 
 
-            {selectedNode && (
-              <NodeConfigSidebar 
-                node={selectedNode} 
-                nodes={nodes}
-                edges={edges}
-                onClose={() => setSelectedNodeId(null)}
-                onUpdate={handleUpdateNode}
-                onDelete={handleDeleteNode}
-              />
-            )}
+            <div className={`absolute right-0 top-0 bottom-0 z-20 transition-transform duration-500 ease-out ${isSidebarVisible ? 'translate-x-0' : 'translate-x-full'}`}>
+              {activeSidebarNode && (
+                <NodeConfigSidebar 
+                  node={activeSidebarNode} 
+                  nodes={nodes}
+                  edges={edges}
+                  onClose={() => setSelectedNodeId(null)}
+                  onUpdate={handleUpdateNode}
+                  onDelete={handleDeleteNode}
+                />
+              )}
+            </div>
             
             {/* Command Palette Modal */}
             {isCommandPaletteOpen && (
