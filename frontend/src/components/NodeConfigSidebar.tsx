@@ -142,13 +142,16 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
 
   const renderToolSelection = (prefix: string = '') => {
     const accessKey = prefix ? `${prefix}_tools_access` : 'tools_access';
-    const listKey = prefix ? `${prefix}_tools_list` : (node.type === 'toolNode' ? 'tool_id' : 'tools_list');
-    
+    const listKey = prefix ? `${prefix}_tools_list` : (node.type === 'toolNode' ? 'tool_name' : 'tools_list');
     const defaultAccess = node.type === 'toolNode' ? 'custom' : 'all';
     const access = formData[accessKey] || defaultAccess;
     const selectedTools = formData[listKey] || (node.type === 'toolNode' ? '' : []);
 
     if (node.type === 'toolNode') {
+      const selectedToolObj = activeTools.find(t => t.name === selectedTools);
+      const requestSchema = selectedToolObj?.request_schema || { properties: {}, required: [] };
+      const toolKwargs = formData.tool_kwargs || {};
+
       return (
         <div className="mb-6 mt-4">
           <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider flex items-center mb-2">
@@ -158,19 +161,51 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
           <select
             value={selectedTools}
             onChange={(e) => handleChange(listKey, e.target.value)}
-            className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-emerald-500 outline-none"
+            className="w-full bg-gray-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-emerald-500 outline-none mb-4"
           >
             <option value="" disabled>Select a tool to execute</option>
             {Object.entries(groupedTools).map(([groupName, tools]) => (
               <optgroup key={groupName} label={groupName} className="bg-gray-800 text-gray-300 font-semibold">
                 {tools.map((tool) => (
-                  <option key={tool.id} value={tool.id} className="bg-gray-900 text-white font-normal">
+                  <option key={tool.id} value={tool.name} className="bg-gray-900 text-white font-normal">
                     {tool.name}
                   </option>
                 ))}
               </optgroup>
             ))}
           </select>
+          
+          {selectedTools && (
+            <div className="border border-white/10 bg-black/30 rounded-lg p-3">
+              <label className="block text-xs font-semibold text-emerald-400 mb-2">Tool Arguments</label>
+              {Object.keys(requestSchema.properties || {}).length === 0 ? (
+                <p className="text-[10px] text-gray-500 italic">No arguments required.</p>
+              ) : (
+                <div className="space-y-3">
+                  {Object.entries(requestSchema.properties || {}).map(([argName, argInfo]: [string, any]) => {
+                    const isRequired = (requestSchema.required || []).includes(argName);
+                    return (
+                      <div key={argName}>
+                        <label className="block text-[10px] font-medium text-gray-400 mb-1">
+                          {argName} {isRequired && <span className="text-red-400">*</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={toolKwargs[argName] || ''}
+                          onChange={(e) => {
+                            const updated = { ...toolKwargs, [argName]: e.target.value };
+                            handleChange('tool_kwargs', updated);
+                          }}
+                          placeholder={argInfo.description || `Enter value or state.variable...`}
+                          className="w-full bg-gray-900 border border-white/10 rounded p-1.5 text-xs text-white outline-none focus:border-emerald-500/50"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       );
     }
@@ -598,57 +633,62 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
           <label className="block text-xs font-medium text-gray-400 mb-2">Operations</label>
           <div className="space-y-2">
             {(formData.operations || []).map((op: any, index: number) => (
-              <div key={index} className="flex flex-col bg-black/40 border border-white/5 rounded p-2 gap-2 relative">
-                <button 
-                  onClick={() => {
-                    const ops = [...formData.operations];
-                    ops.splice(index, 1);
-                    handleChange('operations', ops);
-                  }}
-                  className="absolute top-2 right-2 text-gray-500 hover:text-red-400"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-                
-                <select
-                  value={op.op || 'set'}
-                  onChange={(e) => {
-                    const ops = [...formData.operations];
-                    ops[index].op = e.target.value;
-                    handleChange('operations', ops);
-                  }}
-                  className="w-24 bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none"
-                >
-                  <option value="set">Set</option>
-                  <option value="copy">Copy</option>
-                  <option value="delete">Delete</option>
-                  <option value="append">Append</option>
-                </select>
-                
-                <input
-                  type="text"
-                  placeholder="Target Key"
-                  value={op.key || op.to || ''}
-                  onChange={(e) => {
-                    const ops = [...formData.operations];
-                    ops[index].key = e.target.value;
-                    handleChange('operations', ops);
-                  }}
-                  className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none"
-                />
-                
-                {op.op !== 'delete' && (
-                  <input
-                    type="text"
-                    placeholder={op.op === 'copy' ? "Source Key" : "Value"}
-                    value={op.value || op.from || ''}
+              <div key={index} className="flex flex-col bg-black/40 border border-white/5 rounded p-2 gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <select
+                    value={op.op || 'set'}
                     onChange={(e) => {
                       const ops = [...formData.operations];
-                      ops[index].value = e.target.value;
+                      ops[index] = { op: e.target.value };
                       handleChange('operations', ops);
                     }}
-                    className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none"
-                  />
+                    className="flex-1 bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none"
+                  >
+                    <option value="set">Set (Create or update value)</option>
+                    <option value="copy">Copy (Duplicate a value)</option>
+                    <option value="delete">Delete (Remove a value)</option>
+                    <option value="append">Append (Add to a list)</option>
+                    <option value="merge">Merge (Combine two objects)</option>
+                  </select>
+                  
+                  <button 
+                    onClick={() => {
+                      const ops = [...formData.operations];
+                      ops.splice(index, 1);
+                      handleChange('operations', ops);
+                    }}
+                    className="text-gray-500 hover:text-red-400 p-1 hover:bg-white/5 rounded transition-colors flex-shrink-0"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+                
+                {(!op.op || op.op === 'set') && (
+                  <>
+                    <input type="text" placeholder="Target Key (e.g. state.metadata.user)" value={op.key || ''} onChange={(e) => { const ops = [...formData.operations]; ops[index].key = e.target.value; handleChange('operations', ops); }} className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none" />
+                    <input type="text" placeholder="Value (String or Number)" value={op.value || ''} onChange={(e) => { const ops = [...formData.operations]; ops[index].value = e.target.value; handleChange('operations', ops); }} className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none" />
+                  </>
+                )}
+                {op.op === 'copy' && (
+                  <>
+                    <input type="text" placeholder="From Variable (e.g. state.input)" value={op.from || ''} onChange={(e) => { const ops = [...formData.operations]; ops[index].from = e.target.value; handleChange('operations', ops); }} className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none" />
+                    <input type="text" placeholder="To Variable (e.g. state.metadata.query)" value={op.to || ''} onChange={(e) => { const ops = [...formData.operations]; ops[index].to = e.target.value; handleChange('operations', ops); }} className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none" />
+                  </>
+                )}
+                {op.op === 'delete' && (
+                  <input type="text" placeholder="Target Key (e.g. state.metadata.temp)" value={op.key || ''} onChange={(e) => { const ops = [...formData.operations]; ops[index].key = e.target.value; handleChange('operations', ops); }} className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none" />
+                )}
+                {op.op === 'append' && (
+                  <>
+                    <input type="text" placeholder="List Variable (e.g. state.metadata.items)" value={op.key || ''} onChange={(e) => { const ops = [...formData.operations]; ops[index].key = e.target.value; handleChange('operations', ops); }} className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none" />
+                    <input type="text" placeholder="Value or Source Variable" value={op.value_from || ''} onChange={(e) => { const ops = [...formData.operations]; ops[index].value_from = e.target.value; handleChange('operations', ops); }} className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none" />
+                  </>
+                )}
+                {op.op === 'merge' && (
+                  <>
+                    <input type="text" placeholder="Source Object Variable (e.g. state.metadata.new)" value={op.from || ''} onChange={(e) => { const ops = [...formData.operations]; ops[index].from = e.target.value; handleChange('operations', ops); }} className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none" />
+                    <input type="text" placeholder="Target Object Variable (e.g. state.metadata)" value={op.into || ''} onChange={(e) => { const ops = [...formData.operations]; ops[index].into = e.target.value; handleChange('operations', ops); }} className="w-full bg-gray-900 border border-white/10 rounded p-1 text-xs text-white outline-none" />
+                  </>
                 )}
               </div>
             ))}
@@ -657,7 +697,7 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
                 const ops = formData.operations || [];
                 handleChange('operations', [...ops, { op: 'set', key: '', value: '' }]);
               }}
-              className="flex items-center text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              className="flex items-center text-xs text-blue-400 hover:text-blue-300 transition-colors mt-2"
             >
               <Plus className="w-3 h-3 mr-1" /> Add Operation
             </button>

@@ -55,9 +55,36 @@ async def get_active_tools(db: AsyncSession = Depends(get_db), current_org: Orga
     default_result = await db.execute(
         select(DefaultTool).where(DefaultTool.is_active == True)
     )
+    
+    try:
+        from agents.tools.registry import get_tool
+    except ImportError:
+        get_tool = None
+        
     for d_tool in default_result.scalars().all():
         d_tool_dict = {column.name: getattr(d_tool, column.name) for column in d_tool.__table__.columns}
         d_tool_dict["integration_name"] = "System Default"
+        
+        if get_tool:
+            t_obj = get_tool(d_tool.name)
+            if t_obj:
+                # Convert langchains tool args to JSON schema format
+                properties = {}
+                required = []
+                for arg_name, arg_info in t_obj.args.items():
+                    properties[arg_name] = {
+                        "type": arg_info.get("type", "string"),
+                        "description": arg_info.get("description", "")
+                    }
+                    if "default" not in arg_info:
+                        required.append(arg_name)
+                
+                d_tool_dict["request_schema"] = {
+                    "type": "object",
+                    "properties": properties,
+                    "required": required
+                }
+                
         tools.append(d_tool_dict)
         
     return tools

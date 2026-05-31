@@ -58,6 +58,18 @@ def compile_graph(graph_definition: dict):
             async def wrapped_tool_node(state: AgentState):
                 return await tool_node_func(state, node_def.get("data", {}))
             return wrapped_tool_node
+        elif node_def["type"] in ["stateTransform", "stateTransformNode"]:
+            from agents.graph.nodes.state_transform_node import build_state_transform_node
+            state_transform_func = build_state_transform_node(node_def.get("data", {}))
+            async def state_transform_node_wrapper(state: AgentState):
+                return await state_transform_func(state)
+            return state_transform_node_wrapper
+        elif node_def["type"] in ["structuredOutput", "structuredOutputNode"]:
+            from agents.graph.nodes.structured_output_node import build_structured_output_node
+            structured_output_func = build_structured_output_node(node_def.get("data", {}))
+            async def structured_output_node_wrapper(state: AgentState):
+                return await structured_output_func(state)
+            return structured_output_node_wrapper
             
         async def fallback_func(state: AgentState):
             return {}
