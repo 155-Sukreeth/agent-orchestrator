@@ -1,33 +1,23 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from httpx import HTTPStatusError
+from backend.database import get_db
 from backend.schemas.notification import NotificationRequest
-from backend.adaptors.registry import get_adaptor
+from backend.services.notification_service import notification_service
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
 @router.post("/send")
-async def send_notification(request: NotificationRequest):
+async def send_notification(request: NotificationRequest, db: AsyncSession = Depends(get_db)):
     """
     Dispatches a notification to the specified channel using the appropriate adaptor.
     """
-    adaptor = get_adaptor(request.channel.lower())
-    
-    if not adaptor:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Unsupported channel: {request.channel}. Supported channels are registered in the adaptor registry."
-        )
-        
     try:
-        # Assuming the adaptor has a send_message method with this signature
-        # We pass recipient_id for both sender_id and thread_id if thread_id is omitted,
-        # since many platforms like Telegram treat them similarly for direct messages.
-        thread_id = request.thread_id if request.thread_id else request.recipient_id
-        await adaptor.send_message(
-            sender_id=request.recipient_id,
-            thread_id=thread_id,
-            text=request.text
-        )
-        return {"status": "success", "message": "Notification dispatched."}
+        return await notification_service.dispatch_notification(db, request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPStatusError as e:
+        # Downstream channel API (e.g. Telegram) rejected the request — surface its response
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
     except Exception as e:
-        # Depending on requirements, we could log this or handle it with our own circuit breakers
         raise HTTPException(status_code=500, detail=str(e))

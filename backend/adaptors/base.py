@@ -8,6 +8,6 @@ class BaseAdaptor(ABC):
         pass
 
     @abstractmethod
-    async def send_message(self, sender_id: str, thread_id: str, text: str):
-        """Send a message back to the user through the channel."""
+    async def send_message(self, connection, sender_id: str, thread_id: str, text: str):
+        """Send a message back to the user through the channel using the specific connection credentials."""
         pass

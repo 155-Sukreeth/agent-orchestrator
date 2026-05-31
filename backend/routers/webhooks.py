@@ -44,8 +44,15 @@ async def trigger_workflow_via_webhook(
         run_id="pending",
         workflow_config={},
     )
+    from backend.repositories.workflow_repository import workflow_repository
+    # We must fetch the workflow first to determine which org it belongs to
+    # because webhooks are external and unauthenticated by default.
+    workflow = await workflow_repository.get_entity_by_id(db, workflow_id)
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+        
     try:
-        run_id = await run_service.start_run(db, workflow_id, agent_payload, agents_client)
+        run_id = await run_service.start_run(db, workflow_id, agent_payload, agents_client, org_id=workflow.organization_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

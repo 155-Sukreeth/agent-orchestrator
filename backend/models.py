@@ -337,6 +337,11 @@ class TelegramConnectionModel(AppConnection):
     @bot_token.setter
     def bot_token(self, value): self.credentials["bot_token"] = value
 
+    @property
+    def default_chat_id(self): return self.credentials.get("default_chat_id")
+    @default_chat_id.setter
+    def default_chat_id(self, value): self.credentials["default_chat_id"] = value
+
 class JiraConnectionModel(AppConnection):
     __mapper_args__ = {"polymorphic_identity": AppConnectionType.JIRA}
     

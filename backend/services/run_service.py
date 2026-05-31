@@ -57,6 +57,8 @@ class RunService:
             "input_text": agent_payload.user_message,
             "input_data": {"user_message": agent_payload.user_message, "context": agent_payload.context},
             "run_type": run_type,
+            "sender_id": sender_id,
+            "thread_id": thread_id,
         }
         run = await run_repository.create(db, run_data, org_id)
         run_id_str = str(run.id)

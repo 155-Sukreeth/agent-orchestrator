@@ -1,26 +1,22 @@
-import httpx
+from backend.models import TelegramConnectionModel
 from backend.adaptors.base import BaseAdaptor
-from backend.config.settings import settings
-from backend.clients.http_client import HttpClientManager, with_resiliency
+from backend.clients.telegram_client import telegram_client
+
 
 class TelegramAdaptor(BaseAdaptor):
     async def parse_payload(self, request_body: dict) -> dict:
         message = request_body.get("message", {})
         chat = message.get("chat", {})
-        text = message.get("text", "")
-        
         return {
             "sender_id": str(chat.get("id")),
             "thread_id": str(chat.get("id")),
-            "text": text
+            "text": message.get("text", ""),
         }
 
-    @with_resiliency()
-    async def send_message(self, sender_id: str, thread_id: str, text: str):
-        url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": sender_id,
-            "text": text
-        }
-        client = HttpClientManager.get_client()
-        await client.post(url, json=payload)
+    async def send_message(self, connection: TelegramConnectionModel, sender_id: str, thread_id: str, text: str):
+        bot_token = connection.bot_token
+        thread_id = thread_id or connection.default_chat_id
+        if not bot_token:
+            raise ValueError("Telegram connection is missing bot_token")
+        await telegram_client.send_message(bot_token=bot_token, chat_id=thread_id, text=text)
+

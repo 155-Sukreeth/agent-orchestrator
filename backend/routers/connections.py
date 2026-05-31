@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Any, Dict
 from pydantic import BaseModel
+from backend.models import AppConnectionType
 
 from backend.database import get_db
 from backend.models import AppConnection, AppConnectionType, Organization
@@ -81,15 +82,25 @@ async def get_connection(connection_id: int, db: AsyncSession = Depends(get_db),
     from backend.services.connection_service import connection_service
     return await connection_service.get_connection(db, connection_id, current_org.id)
 
-@router.post("/", response_model=ConnectionResponse)
+@router.post("/", response_model=Dict[str, Any])
 async def create_connection(conn_data: ConnectionCreate, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
     from backend.services.connection_service import connection_service
-    return await connection_service.create_connection(db, conn_data, current_org.id)
+    connection = await connection_service.create_connection(db, conn_data, current_org.id)
+    result = {"connection": ConnectionResponse.model_validate(connection)}
+    if connection.type == AppConnectionType.TELEGRAM:
+        bootstrap = await connection_service.bootstrap_telegram_connection(db, connection)
+        result["bootstrap"] = bootstrap
+    return result
 
-@router.put("/{connection_id}", response_model=ConnectionResponse)
+@router.put("/{connection_id}", response_model=Dict[str, Any])
 async def update_connection(connection_id: int, conn_data: ConnectionUpdate, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
     from backend.services.connection_service import connection_service
-    return await connection_service.update_connection(db, connection_id, conn_data, current_org.id)
+    connection = await connection_service.update_connection(db, connection_id, conn_data, current_org.id)
+    result = {"connection": ConnectionResponse.model_validate(connection)}
+    if connection.type == AppConnectionType.TELEGRAM:
+        bootstrap = await connection_service.bootstrap_telegram_connection(db, connection)
+        result["bootstrap"] = bootstrap
+    return result
 
 @router.delete("/{connection_id}")
 async def delete_connection(connection_id: int, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):

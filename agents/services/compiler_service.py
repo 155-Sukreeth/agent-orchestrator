@@ -51,7 +51,11 @@ class CompilerService:
             initial_state = {
                 "input": user_message,
                 "messages": [{"role": "user", "content": user_message}],
-                "metadata": {**(context or {}), "trigger": trigger_meta or {}},
+                "metadata": {
+                    **(context or {}),
+                    "trigger": trigger_meta or {},
+                    "run_id": run_id,
+                }
             }
             
             await _log("INFO", "Executing workflow...")
