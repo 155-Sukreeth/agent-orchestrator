@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Bot, Network, ActivitySquare, LayoutDashboard, Database, Link as LinkIcon, User, LogOut } from 'lucide-react';
+import { Network, ActivitySquare, LayoutDashboard, Database, Link as LinkIcon, User, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Layout: React.FC = () => {

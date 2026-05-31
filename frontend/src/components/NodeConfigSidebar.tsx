@@ -12,7 +12,7 @@ interface NodeConfigSidebarProps {
   onOpenTriggers?: () => void;
 }
 
-const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [], edges = [], onClose, onUpdate, onDelete, onOpenTriggers }) => {
+const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, edges = [], onClose, onUpdate, onDelete, onOpenTriggers }) => {
   const [formData, setFormData] = useState<any>(node?.data || {});
   
   const [activeTools, setActiveTools] = useState<any[]>([]);

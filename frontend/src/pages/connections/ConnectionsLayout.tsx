@@ -1,9 +1,8 @@
 import React from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { LinkIcon } from 'lucide-react';
 
 const ConnectionsLayout: React.FC = () => {
-  const navigate = useNavigate();
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a]">
