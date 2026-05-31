@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, { 
   Background, 
   Controls, 
@@ -15,8 +15,7 @@ import { AgentNode, PromptBuilderNode, StructuredOutputNode, StateTransformNode 
 import { RouterNode, LoopNode, ParallelSplitNode, MergeNode, HumanPauseNode, StartNode, EndNode } from '../components/nodes/control/ControlNodes';
 import { ToolNode, KnowledgeNode } from '../components/nodes/integrate/IntegrateNodes';
 import NodeConfigSidebar from '../components/NodeConfigSidebar';
-import TriggersPanel from '../components/workflow/TriggersPanel';
-import { Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, X, Search, Zap, Cpu, GitBranch, Blocks, Globe, Clock, FileText, Code, Settings, RefreshCw, GitCommit, GitMerge, PauseCircle, Wrench, Database, User, Flag, MessageSquare, Play, Info, AlertTriangle, CheckCircle2, Trash } from 'lucide-react';
+import { Save, Plus, Maximize, Minimize, Settings2, PlaySquare, Workflow as WorkflowIcon, X, Search, Zap, Cpu, GitBranch, Blocks, Globe, Clock, FileText, Code, Settings, RefreshCw, GitCommit, GitMerge, PauseCircle, Wrench, Database, Flag, MessageSquare, Play, AlertTriangle, CheckCircle2, Trash } from 'lucide-react';
 import { createWorkflow, fetchWorkflow, updateWorkflow, fetchWorkflows, fetchWorkflowRuns, fetchRunDetails, startTestRun, fetchTemplates, deleteWorkflow } from '../api';
 
 const initialNodes: Node[] = [];
@@ -352,7 +351,7 @@ const WorkflowBuilderContent: React.FC = () => {
       selected: true,
     };
 
-    setNodes((nds) => nds.map(n => ({ ...n, selected: false })).concat(newNode));
+    setNodes((nds) => [...nds.map(n => ({ ...n, selected: false })), newNode]);
     setSelectedNodeId(newNode.id);
   };
 
@@ -399,12 +398,12 @@ const WorkflowBuilderContent: React.FC = () => {
         return stripped.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
       };
 
-      const triggerNode = nodes.find(n => n.type.toLowerCase().includes('trigger') || n.type === 'startNode');
+      const triggerNode = nodes.find(n => n.type?.toLowerCase().includes('trigger') || n.type === 'startNode');
       const entry_node = triggerNode ? triggerNode.id : (nodes.length > 0 ? nodes[0].id : '');
 
       const graphDefinition = {
         nodes: nodes.map(n => {
-          let backendType = convertTypeToSnakeCase(n.type);
+          let backendType = convertTypeToSnakeCase(n.type ?? '');
           if (n.type === 'agentNode') backendType = 'agent'; // legacy fallback mapping
           if (n.type === 'routerNode') backendType = 'router';
           if (n.type === 'toolNode') backendType = 'tool';
@@ -469,8 +468,6 @@ const WorkflowBuilderContent: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [selectedNodeId, nodes]);
-
-  const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
   const deployedWorkflows = workflows.filter(w => w.is_active);
   const draftedWorkflows = workflows.filter(w => !w.is_active);
