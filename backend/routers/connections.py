@@ -70,6 +70,19 @@ async def get_connections(db: AsyncSession = Depends(get_db), current_org: Organ
     result = await db.execute(select(AppConnection).where(AppConnection.organization_id == current_org.id))
     return result.scalars().all()
 
+@router.get("/channels", response_model=List[str])
+async def get_active_channels(db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
+    """Fetches a list of active channel types available for sending notifications."""
+    result = await db.execute(
+        select(AppConnection.type)
+        .where(
+            AppConnection.organization_id == current_org.id,
+            AppConnection.is_active == True
+        )
+        .distinct()
+    )
+    return [conn_type.value for conn_type in result.scalars().all()]
+
 @router.get("/{connection_id}", response_model=ConnectionResponse)
 async def get_connection(connection_id: int, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
     result = await db.execute(select(AppConnection).where(AppConnection.id == connection_id, AppConnection.organization_id == current_org.id))

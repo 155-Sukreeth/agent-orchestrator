@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Save, Search, Cpu, ChevronDown, ChevronUp, Database, Check, Zap, Plus, Trash2 } from 'lucide-react';
-import { fetchActiveTools, fetchActiveDocumentIntegrations, fetchIntegrationDocuments } from '../api';
+import { fetchActiveTools, fetchActiveDocumentIntegrations, fetchIntegrationDocuments, fetchActiveChannels } from '../api';
 
 interface NodeConfigSidebarProps {
   node: any;
@@ -17,6 +17,7 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
   
   const [activeTools, setActiveTools] = useState<any[]>([]);
   const [activeIntegrations, setActiveIntegrations] = useState<any[]>([]);
+  const [activeChannels, setActiveChannels] = useState<string[]>([]);
   const [integrationDocs, setIntegrationDocs] = useState<Record<string, any[]>>({});
 
   const [expandedToolGroups, setExpandedToolGroups] = useState<Record<string, boolean>>({});
@@ -59,12 +60,14 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [tools, integrations] = await Promise.all([
+        const [tools, integrations, channels] = await Promise.all([
           fetchActiveTools(),
-          fetchActiveDocumentIntegrations()
+          fetchActiveDocumentIntegrations(),
+          fetchActiveChannels()
         ]);
         setActiveTools(tools);
         setActiveIntegrations(integrations);
+        setActiveChannels(channels);
       } catch (err) {
         console.error("Failed to load active tools/integrations", err);
       }
@@ -189,16 +192,32 @@ const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({ node, nodes = [],
                         <label className="block text-[10px] font-medium text-gray-400 mb-1">
                           {argName} {isRequired && <span className="text-red-400">*</span>}
                         </label>
-                        <input
-                          type="text"
-                          value={toolKwargs[argName] || ''}
-                          onChange={(e) => {
-                            const updated = { ...toolKwargs, [argName]: e.target.value };
-                            handleChange('tool_kwargs', updated);
-                          }}
-                          placeholder={argInfo.description || `Enter value or state.variable...`}
-                          className="w-full bg-gray-900 border border-white/10 rounded p-1.5 text-xs text-white outline-none focus:border-emerald-500/50"
-                        />
+                        {selectedTools === 'send_notification' && argName === 'channel' ? (
+                          <select
+                            value={toolKwargs[argName] || ''}
+                            onChange={(e) => {
+                              const updated = { ...toolKwargs, [argName]: e.target.value };
+                              handleChange('tool_kwargs', updated);
+                            }}
+                            className="w-full bg-gray-900 border border-white/10 rounded p-1.5 text-xs text-white outline-none focus:border-emerald-500/50"
+                          >
+                            <option value="" disabled>Select a channel</option>
+                            {activeChannels.map(ch => (
+                              <option key={ch} value={ch}>{ch}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={toolKwargs[argName] || ''}
+                            onChange={(e) => {
+                              const updated = { ...toolKwargs, [argName]: e.target.value };
+                              handleChange('tool_kwargs', updated);
+                            }}
+                            placeholder={argInfo.description || `Enter value or state.variable...`}
+                            className="w-full bg-gray-900 border border-white/10 rounded p-1.5 text-xs text-white outline-none focus:border-emerald-500/50"
+                          />
+                        )}
                       </div>
                     );
                   })}

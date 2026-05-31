@@ -162,6 +162,12 @@ export const fetchConnections = async () => {
   return response.json();
 };
 
+export const fetchActiveChannels = async () => {
+  const response = await fetchWithAuth(`${API_URL}/api/connections/channels`);
+  if (!response.ok) throw new Error('Failed to fetch channels');
+  return response.json();
+};
+
 export const createConnection = async (connectionData: any) => {
   const response = await fetchWithAuth(`${API_URL}/api/connections/`, {
     method: 'POST',
