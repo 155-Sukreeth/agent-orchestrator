@@ -2,6 +2,7 @@ import logging
 import inspect
 from agents.graph.state import AgentState
 from agents.tools.registry import get_tool
+from agents.graph.tool_executor import build_tool_invoke_payload
 
 logger = logging.getLogger(__name__)
 
@@ -61,11 +62,11 @@ async def tool_node(state: AgentState, config: dict) -> dict:
             if arg_name in context["metadata"]:
                 resolved_kwargs[arg_name] = context["metadata"][arg_name]
 
-    logger.info(f"Executing standalone tool '{tool_name}' with kwargs: {resolved_kwargs}")
-    
+    tool_input = build_tool_invoke_payload(tool_name, resolved_kwargs, context["metadata"])
+    logger.info("Executing standalone tool '%s' input=%s", tool_name, tool_input)
+
     try:
-        # Ainvoke the tool
-        result = await tool_obj.ainvoke(resolved_kwargs)
+        result = await tool_obj.ainvoke(tool_input)
         
         # Merge result into metadata for downstream nodes
         metadata = state.get("metadata", {}).copy()

@@ -3,6 +3,7 @@ from backend.repositories.run_repository import run_repository
 from backend.repositories.workflow_repository import workflow_repository
 from backend.clients.agents_client import AgentsClient
 from backend.schemas.agent_run_payload import AgentRunPayload
+from backend.services.workflow_tool_resolver import workflow_tool_resolver
 import logging
 
 logger = logging.getLogger(__name__)
@@ -63,10 +64,13 @@ class RunService:
         run = await run_repository.create(db, run_data, org_id)
         run_id_str = str(run.id)
 
-        # Inject the run_id and real workflow_config now that we have them
+        # Inject run_id and workflow graph; resolve tool IDs -> names for agent nodes
+        enriched_graph = await workflow_tool_resolver.enrich_workflow_config(
+            db, org_id, workflow.graph_definition
+        )
         agent_payload = agent_payload.model_copy(update={
             "run_id": run_id_str,
-            "workflow_config": workflow.graph_definition,
+            "workflow_config": enriched_graph,
         })
 
         # Dispatch to agents service
