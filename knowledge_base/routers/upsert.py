@@ -42,6 +42,7 @@ async def process_upsert(document_id: int, content: str, content_type: str, sess
         session=session,
         document_id=document_id,
         integration_id=integration_id,
+        organization_id=doc.organization_id,
         chunks=chunks,
         embeddings=embeddings,
         is_active=doc.is_active

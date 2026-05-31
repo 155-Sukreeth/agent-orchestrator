@@ -21,11 +21,14 @@ async def websocket_endpoint(websocket: WebSocket, run_id: int, token: str = Que
         user_id = int(payload.get("sub"))
         
         async with AsyncSessionLocal() as db:
-            user = await db.get(User, user_id)
+            from backend.repositories.user_repository import user_repository
+            from backend.repositories.run_repository import run_repository
+            
+            user = await user_repository.get_by_id(db, user_id)
             if not user or not user.organization_id:
                 raise ValueError("Invalid user")
                 
-            run = await db.get(Run, run_id)
+            run = await run_repository.get_by_id(db, run_id)
             if not run or run.organization_id != user.organization_id:
                 await websocket.send_text('{"level": "ERROR", "message": "Run not found or access denied."}')
                 await websocket.close(code=1008)

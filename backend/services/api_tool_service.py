@@ -13,13 +13,15 @@ class APIToolService:
         channel = f"integration_stream:{integration_id}"
         
         async with AsyncSessionLocal() as db:
+            from backend.repositories.integration_repository import integration_repository
+            from backend.repositories.agent_tool_repository import agent_tool_repository
+            
             # 1. Update status
-            integration = await db.get(Integration, integration_id)
+            integration = await integration_repository.get_by_id(db, integration_id)
             if not integration:
                 return
                 
-            integration.status = IntegrationStatus.SYNCING
-            await db.commit()
+            integration = await integration_repository.update(db, integration, {"status": IntegrationStatus.SYNCING})
             
             # 2. Emit Start Event
             start_event = SyncStartEvent(integration_id=integration_id)
@@ -49,23 +51,19 @@ class APIToolService:
                     logger.warning(f"Invalid JSON for response schema in integration {integration_id}")
                 
                 # 4. Wipe old tools for this integration
-                await db.execute(
-                    AgentTool.__table__.delete().where(AgentTool.integration_id == integration_id)
-                )
+                await agent_tool_repository.delete_by_integration_id(db, integration_id)
                 
                 # 5. Insert new tool
-                db_tool = AgentTool(
-                    organization_id=integration.organization_id,
-                    integration_id=integration_id,
-                    name=tool_name,
-                    description=description,
-                    request_schema=request_schema,
-                    response_schema=response_schema,
-                    is_active=True
-                )
-                db.add(db_tool)
-                    
-                await db.commit()
+                tool_data = {
+                    "organization_id": integration.organization_id,
+                    "integration_id": integration_id,
+                    "name": tool_name,
+                    "description": description,
+                    "request_schema": request_schema,
+                    "response_schema": response_schema,
+                    "is_active": True
+                }
+                await agent_tool_repository.create(db, tool_data)
 
             except Exception as e:
                 logger.error(f"Error syncing API tool {integration_id}: {e}")
@@ -74,16 +72,15 @@ class APIToolService:
                 error_event = SyncErrorEvent(integration_id=integration_id, error=str(e))
                 await redis.publish(channel, error_event.model_dump_json())
                 
-                integration = await db.get(Integration, integration_id)
+                integration = await integration_repository.get_by_id(db, integration_id)
                 if integration:
-                    integration.status = IntegrationStatus.ERROR
-                    await db.commit()
+                    await integration_repository.update(db, integration, {"status": IntegrationStatus.ERROR})
                 return
 
             # 6. Finish normally
-            integration.status = IntegrationStatus.SYNCED
-            integration.last_sync = func.now()
-            await db.commit()
+            if integration:
+                integration = await integration_repository.get_by_id(db, integration_id)
+                await integration_repository.update(db, integration, {"status": IntegrationStatus.SYNCED, "last_sync": func.now()})
             
             complete_event = SyncCompleteEvent(integration_id=integration_id)
             await redis.publish(channel, complete_event.model_dump_json())

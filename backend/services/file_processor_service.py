@@ -13,6 +13,16 @@ from backend.adaptors.file_storage import file_upload_adaptor
 logger = logging.getLogger(__name__)
 
 class FileProcessorService:
+    async def create_file_record(self, db, filename: str, content_type: str, size: int, storage_path: str, org_id: int):
+        from backend.repositories.uploaded_file_repository import uploaded_file_repository
+        file_data = {
+            "filename": filename,
+            "content_type": content_type,
+            "size": size,
+            "storage_path": storage_path,
+        }
+        return await uploaded_file_repository.create(db, file_data, org_id)
+
     def extract_text(self, file_path: str) -> str:
         """Extracts text from a given file based on its extension."""
         ext = os.path.splitext(file_path)[1].lower()
@@ -42,11 +52,14 @@ class FileProcessorService:
         channel = f"integration_stream:{integration_id}"
         
         async with AsyncSessionLocal() as db:
+            from backend.repositories.integration_repository import integration_repository
+            from backend.repositories.uploaded_file_repository import uploaded_file_repository
+            from backend.repositories.knowledge_document_repository import knowledge_document_repository
+            
             # 1. Update status
-            integration = await db.get(Integration, integration_id)
+            integration = await integration_repository.get_by_id(db, integration_id)
             if integration:
-                integration.status = IntegrationStatus.SYNCING
-                await db.commit()
+                integration = await integration_repository.update(db, integration, {"status": IntegrationStatus.SYNCING})
                 
             # 2. Emit Start Event
             start_event = SyncStartEvent(integration_id=integration_id)
@@ -55,7 +68,7 @@ class FileProcessorService:
             # 3. Process each file
             for file_id in file_ids:
                 try:
-                    uploaded_file = await db.get(UploadedFile, file_id)
+                    uploaded_file = await uploaded_file_repository.get_by_id(db, file_id)
                     if not uploaded_file:
                         continue
                         
@@ -63,17 +76,15 @@ class FileProcessorService:
                     text = self.extract_text(file_path)
                     
                     # Create KnowledgeDocument
-                    doc = KnowledgeDocument(
-                        organization_id=integration.organization_id,
-                        integration_id=integration_id,
-                        title=uploaded_file.filename,
-                        url_or_path=uploaded_file.storage_path,
-                        is_active=True,
-                        metadata_json={"chunks": 0}
-                    )
-                    db.add(doc)
-                    await db.commit()
-                    await db.refresh(doc)
+                    doc_data = {
+                        "organization_id": integration.organization_id,
+                        "integration_id": integration_id,
+                        "title": uploaded_file.filename,
+                        "url_or_path": uploaded_file.storage_path,
+                        "is_active": True,
+                        "metadata_json": {"chunks": 0}
+                    }
+                    doc = await knowledge_document_repository.create(db, doc_data)
                     
                     # Hand off to knowledge_base microservice
                     async with httpx.AsyncClient() as client:
@@ -90,9 +101,7 @@ class FileProcessorService:
                         chunks_count = upsert_resp.json().get("chunks", 0)
                         
                         # Update DB
-                        doc.metadata_json = {"chunks": chunks_count}
-                        db.add(doc)
-                        await db.commit()
+                        doc = await knowledge_document_repository.update(db, doc, {"metadata_json": {"chunks": chunks_count}})
                         
                         # Emit Progress
                         progress_event = SyncProgressEvent(
@@ -113,17 +122,15 @@ class FileProcessorService:
                     error_event = SyncErrorEvent(integration_id=integration_id, error=str(e))
                     await redis.publish(channel, error_event.model_dump_json())
                     
-                    integration = await db.get(Integration, integration_id)
+                    integration = await integration_repository.get_by_id(db, integration_id)
                     if integration:
-                        integration.status = IntegrationStatus.ERROR
-                        await db.commit()
+                        await integration_repository.update(db, integration, {"status": IntegrationStatus.ERROR})
                     return # Abort on error
 
             # 4. Finish normally
             if integration:
-                integration.status = IntegrationStatus.SYNCED
-                integration.last_sync = func.now()
-                await db.commit()
+                integration = await integration_repository.get_by_id(db, integration_id)
+                await integration_repository.update(db, integration, {"status": IntegrationStatus.SYNCED, "last_sync": func.now()})
                 
             complete_event = SyncCompleteEvent(integration_id=integration_id)
             await redis.publish(channel, complete_event.model_dump_json())
