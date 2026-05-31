@@ -9,9 +9,9 @@ def build_llm_node(config: dict):
         system_prompt = config.get("system_prompt", "")
         
         try:
-            provider, model = llm_config.primary_model.split("/")
+            provider, model = llm_config.primary_model.split("/", 1)
         except ValueError:
-            provider, model = llm_params_registry.LLM_NODE_DEFAULT.primary_model.split("/")
+            provider, model = llm_params_registry.LLM_NODE_DEFAULT.primary_model.split("/", 1)
             
         resolved_model = bifrost_client.resolve_model(provider, model)
         client = bifrost_client.client
@@ -23,7 +23,11 @@ def build_llm_node(config: dict):
             
         # Append existing state messages
         for msg in state.get("messages", []):
-            messages.append({"role": msg["role"], "content": msg["content"]})
+            if hasattr(msg, "type"):
+                role = "assistant" if msg.type == "ai" else ("user" if msg.type == "human" else msg.type)
+                messages.append({"role": role, "content": getattr(msg, "content", "")})
+            elif isinstance(msg, dict):
+                messages.append(msg)
             
         extra_body = {}
         if llm_config.secondary_models:

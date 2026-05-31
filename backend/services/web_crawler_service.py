@@ -39,11 +39,13 @@ class WebCrawlerService:
         
         
         async with AsyncSessionLocal() as db:
+            from backend.repositories.integration_repository import integration_repository
+            from backend.repositories.knowledge_document_repository import knowledge_document_repository
+            
             # 1. Update status
-            integration = await db.get(Integration, integration_id)
+            integration = await integration_repository.get_by_id(db, integration_id)
             if integration:
-                integration.status = IntegrationStatus.SYNCING
-                await db.commit()
+                integration = await integration_repository.update(db, integration, {"status": IntegrationStatus.SYNCING})
                 
             # 2. Emit Start Event
             start_event = SyncStartEvent(integration_id=integration_id)
@@ -109,17 +111,15 @@ class WebCrawlerService:
                             title = soup.title.string if soup.title else current_url
                             
                             # Create Document
-                            doc = KnowledgeDocument(
-                                organization_id=integration.organization_id if integration else None,
-                                integration_id=integration_id,
-                                title=title[:255],
-                                url_or_path=current_url,
-                                is_active=True,
-                                metadata_json={"chunks": 0}
-                            )
-                            db.add(doc)
-                            await db.commit()
-                            await db.refresh(doc)
+                            doc_data = {
+                                "organization_id": integration.organization_id if integration else None,
+                                "integration_id": integration_id,
+                                "title": title[:255],
+                                "url_or_path": current_url,
+                                "is_active": True,
+                                "metadata_json": {"chunks": 0}
+                            }
+                            doc = await knowledge_document_repository.create(db, doc_data)
                             
                             # Hand off to knowledge_base microservice to chunk and embed
                             try:
@@ -136,9 +136,7 @@ class WebCrawlerService:
                                 chunks_count = upsert_resp.json().get("chunks", 0)
                                 
                                 # Update chunks count
-                                doc.metadata_json = {"chunks": chunks_count}
-                                db.add(doc)
-                                await db.commit()
+                                doc = await knowledge_document_repository.update(db, doc, {"metadata_json": {"chunks": chunks_count}})
                                 
                                 # Emit Progress
                                 from backend.schemas.integration import SyncProgressEvent, DocumentData
@@ -157,16 +155,13 @@ class WebCrawlerService:
                                 logger.error(f"Error calling knowledge_base for {current_url}: {e}")
                                 await db.rollback()
                                 
-                                doc = await db.get(KnowledgeDocument, doc.id)
+                                doc = await knowledge_document_repository.get_by_id(db, doc.id)
                                 if doc:
-                                    doc.metadata_json = {"error": str(e), "chunks": 0}
-                                    db.add(doc)
+                                    await knowledge_document_repository.update(db, doc, {"metadata_json": {"error": str(e), "chunks": 0}})
                                 
-                                integration = await db.get(Integration, integration_id)
+                                integration = await integration_repository.get_by_id(db, integration_id)
                                 if integration:
-                                    integration.status = IntegrationStatus.ERROR
-                                    
-                                await db.commit()
+                                    await integration_repository.update(db, integration, {"status": IntegrationStatus.ERROR})
                                 # Abort the entire crawl on fatal error (e.g. API keys invalid, DB down)
                                 error_event = SyncErrorEvent(integration_id=integration_id, error=str(e))
                                 await redis.publish(channel, error_event.model_dump_json())
@@ -177,9 +172,8 @@ class WebCrawlerService:
                         
             # 4. Finish normally
             if integration:
-                integration.status = IntegrationStatus.SYNCED
-                integration.last_sync = func.now()
-                await db.commit()
+                integration = await integration_repository.get_by_id(db, integration_id)
+                await integration_repository.update(db, integration, {"status": IntegrationStatus.SYNCED, "last_sync": func.now()})
                 
             complete_event = SyncCompleteEvent(integration_id=integration_id)
             await redis.publish(channel, complete_event.model_dump_json())

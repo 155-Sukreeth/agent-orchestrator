@@ -6,9 +6,10 @@ from backend.models import KnowledgeChunk
 from knowledge_base.config.settings import settings
 
 class VectorStoreService:
-    async def upsert_chunks(self, session: AsyncSession, document_id: int, integration_id: int, chunks: List[str], embeddings: List[List[float]], is_active: bool = True):
+    async def upsert_chunks(self, session: AsyncSession, document_id: int, integration_id: int, organization_id: int, chunks: List[str], embeddings: List[List[float]], is_active: bool = True):
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             stmt = insert(KnowledgeChunk).values(
+                organization_id=organization_id,
                 document_id=document_id,
                 integration_id=integration_id,
                 content=chunk,

@@ -13,9 +13,9 @@ async def router_node(state: AgentState, config: dict) -> dict:
         prompt = render("llm_judge", section="full", condition=config.get("condition"), message=state["input"])
         
         try:
-            provider, model = llm_config.primary_model.split("/")
+            provider, model = llm_config.primary_model.split("/", 1)
         except ValueError:
-            provider, model = llm_params_registry.LLM_JUDGE.primary_model.split("/")
+            provider, model = llm_params_registry.LLM_JUDGE.primary_model.split("/", 1)
             
         resolved_model = bifrost_client.resolve_model(provider, model)
         client = bifrost_client.client

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Bot, Network, ActivitySquare, LayoutDashboard, Database, Link as LinkIcon } from 'lucide-react';
+import { Bot, Network, ActivitySquare, LayoutDashboard, Database, Link as LinkIcon, User, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Layout: React.FC = () => {
@@ -14,11 +14,47 @@ const Layout: React.FC = () => {
     { name: 'Monitor', icon: ActivitySquare, path: '/monitor' },
   ];
 
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const isResizing = useRef(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      setSidebarWidth(prev => {
+        const newWidth = prev + e.movementX;
+        return Math.min(Math.max(newWidth, 150), 400);
+      });
+    };
+    const handleMouseUp = () => {
+      if (isResizing.current) {
+        isResizing.current = false;
+        document.body.style.cursor = 'default';
+        document.body.style.userSelect = 'auto';
+      }
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   return (
     <div className="flex h-screen bg-gray-950 overflow-hidden text-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 flex flex-col border-r border-white/10 glass z-20">
-        <div className="h-16 flex items-center px-6 border-b border-white/5">
+      <aside 
+        id="global-sidebar" 
+        style={{ width: sidebarWidth }}
+        className="relative flex flex-col border-r border-white/10 glass z-20 transition-all duration-300 ease-in-out shrink-0"
+      >
+        {/* Resize Handle */}
+        <div 
+          className="absolute right-0 top-0 bottom-0 w-2 translate-x-1/2 cursor-col-resize hover:bg-indigo-500/50 z-50 transition-colors"
+          onMouseDown={(e) => { e.preventDefault(); isResizing.current = true; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; }}
+        />
+        
+        <div className="h-16 flex items-center px-6 border-b border-white/5 shrink-0">
           <LayoutDashboard className="w-6 h-6 text-indigo-500 mr-3" />
           <h1 className="text-xl font-semibold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
             Orchestrator
@@ -51,23 +87,24 @@ const Layout: React.FC = () => {
           ))}
         </nav>
         
-        {/* User Profile & Logout */}
-        <div className="p-4 border-t border-white/5">
+        {/* Profile Section */}
+        <div className="p-4 border-t border-white/10 shrink-0 bg-black/20">
           <div className="flex items-center justify-between">
-            <div className="flex flex-col truncate pr-2">
-              <span className="text-sm font-medium text-gray-300 truncate">
-                {user?.email || 'User'}
-              </span>
-              <span className="text-xs text-gray-500">Org ID: {user?.organization_id || 'Unknown'}</span>
+            <div className="flex items-center space-x-3 overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30 shrink-0">
+                <User className="w-4 h-4 text-indigo-400" />
+              </div>
+              <div className="truncate">
+                <p className="text-sm font-medium text-gray-200 truncate">{user?.email || 'User'}</p>
+                <p className="text-[10px] text-gray-500 truncate">Org ID: {user?.organization_id || 'Unknown'}</p>
+              </div>
             </div>
             <button 
               onClick={logout}
-              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-red-500/10 transition-colors"
+              className="p-2 text-gray-500 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors" 
               title="Logout"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>

@@ -40,11 +40,18 @@ export const fetchWorkflows = async () => {
   return response.json();
 };
 
+export const fetchTemplates = async () => {
+  const response = await fetchWithAuth(`${API_URL}/api/workflows/templates`);
+  if (!response.ok) throw new Error('Failed to fetch templates');
+  return response.json();
+};
+
 export const fetchWorkflow = async (id: string) => {
   const response = await fetchWithAuth(`${API_URL}/api/workflows/${id}`);
   if (!response.ok) throw new Error('Failed to fetch workflow');
   return response.json();
 };
+
 
 export const updateWorkflow = async (id: string, workflowData: any) => {
   const response = await fetchWithAuth(`${API_URL}/api/workflows/${id}`, {
@@ -53,6 +60,14 @@ export const updateWorkflow = async (id: string, workflowData: any) => {
     body: JSON.stringify(workflowData)
   });
   if (!response.ok) throw new Error('Failed to update workflow');
+  return response.json();
+};
+
+export const deleteWorkflow = async (id: string) => {
+  const response = await fetchWithAuth(`${API_URL}/api/workflows/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete workflow');
   return response.json();
 };
 
@@ -147,6 +162,12 @@ export const fetchConnections = async () => {
   return response.json();
 };
 
+export const fetchActiveChannels = async () => {
+  const response = await fetchWithAuth(`${API_URL}/api/connections/channels`);
+  if (!response.ok) throw new Error('Failed to fetch channels');
+  return response.json();
+};
+
 export const createConnection = async (connectionData: any) => {
   const response = await fetchWithAuth(`${API_URL}/api/connections/`, {
     method: 'POST',
@@ -178,5 +199,36 @@ export const deleteConnection = async (id: number) => {
     method: 'DELETE',
   });
   if (!response.ok) throw new Error('Failed to delete connection');
+  return response.json();
+};
+
+export const fetchWorkflowRuns = async (workflowId: string) => {
+  const response = await fetchWithAuth(`${API_URL}/api/runs/workflow/${workflowId}`);
+  if (!response.ok) throw new Error('Failed to fetch runs');
+  return response.json();
+};
+
+export const fetchRunDetails = async (runId: string) => {
+  const response = await fetchWithAuth(`${API_URL}/api/runs/${runId}`);
+  if (!response.ok) throw new Error('Failed to fetch run details');
+  return response.json();
+};
+
+export const startTestRun = async (workflowId: string, inputData: any) => {
+  const payload = {
+    message: typeof inputData === 'string' ? inputData : (inputData?.topic || inputData?.input || inputData?.message || null),
+    data: typeof inputData === 'object' && inputData !== null ? inputData : {}
+  };
+
+  const response = await fetchWithAuth(`${API_URL}/api/runs/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      workflow_id: parseInt(workflowId),
+      payload: payload,
+      run_type: 'test'
+    })
+  });
+  if (!response.ok) throw new Error('Failed to start test run');
   return response.json();
 };

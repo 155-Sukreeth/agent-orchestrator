@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Any, Dict
 from pydantic import BaseModel
+from backend.models import AppConnectionType
 
 from backend.database import get_db
 from backend.models import AppConnection, AppConnectionType, Organization
@@ -67,66 +68,41 @@ class ConnectionResponse(BaseModel):
 
 @router.get("/", response_model=List[ConnectionResponse])
 async def get_connections(db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    result = await db.execute(select(AppConnection).where(AppConnection.organization_id == current_org.id))
-    return result.scalars().all()
+    from backend.services.connection_service import connection_service
+    return await connection_service.get_connections(db, current_org.id)
+
+@router.get("/channels", response_model=List[str])
+async def get_active_channels(db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
+    """Fetches a list of active channel types available for sending notifications."""
+    from backend.services.connection_service import connection_service
+    return await connection_service.get_active_channels(db, current_org.id)
 
 @router.get("/{connection_id}", response_model=ConnectionResponse)
 async def get_connection(connection_id: int, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    result = await db.execute(select(AppConnection).where(AppConnection.id == connection_id, AppConnection.organization_id == current_org.id))
-    connection = result.scalars().first()
-    if not connection:
-        raise HTTPException(status_code=404, detail="Connection not found")
-    return connection
+    from backend.services.connection_service import connection_service
+    return await connection_service.get_connection(db, connection_id, current_org.id)
 
-@router.post("/", response_model=ConnectionResponse)
+@router.post("/", response_model=Dict[str, Any])
 async def create_connection(conn_data: ConnectionCreate, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    # Check if name exists
-    existing = await db.execute(select(AppConnection).where(AppConnection.name == conn_data.name, AppConnection.organization_id == current_org.id))
-    if existing.scalars().first():
-        raise HTTPException(status_code=400, detail="Connection with this name already exists")
-        
-    db_conn = AppConnection(
-        organization_id=current_org.id,
-        name=conn_data.name,
-        type=conn_data.type,
-        credentials=conn_data.credentials,
-        is_active=conn_data.is_active
-    )
-    db.add(db_conn)
-    await db.commit()
-    await db.refresh(db_conn)
-    return db_conn
+    from backend.services.connection_service import connection_service
+    connection = await connection_service.create_connection(db, conn_data, current_org.id)
+    result = {"connection": ConnectionResponse.model_validate(connection)}
+    if connection.type == AppConnectionType.TELEGRAM:
+        bootstrap = await connection_service.bootstrap_telegram_connection(db, connection)
+        result["bootstrap"] = bootstrap
+    return result
 
-@router.put("/{connection_id}", response_model=ConnectionResponse)
+@router.put("/{connection_id}", response_model=Dict[str, Any])
 async def update_connection(connection_id: int, conn_data: ConnectionUpdate, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    result = await db.execute(select(AppConnection).where(AppConnection.id == connection_id, AppConnection.organization_id == current_org.id))
-    connection = result.scalars().first()
-    if not connection:
-        raise HTTPException(status_code=404, detail="Connection not found")
-        
-    if conn_data.name is not None and conn_data.name != connection.name:
-        # Check name conflict
-        existing = await db.execute(select(AppConnection).where(AppConnection.name == conn_data.name, AppConnection.organization_id == current_org.id))
-        if existing.scalars().first():
-            raise HTTPException(status_code=400, detail="Connection with this name already exists")
-        connection.name = conn_data.name
-        
-    if conn_data.credentials is not None:
-        connection.credentials = conn_data.credentials
-    if conn_data.is_active is not None:
-        connection.is_active = conn_data.is_active
-        
-    await db.commit()
-    await db.refresh(connection)
-    return connection
+    from backend.services.connection_service import connection_service
+    connection = await connection_service.update_connection(db, connection_id, conn_data, current_org.id)
+    result = {"connection": ConnectionResponse.model_validate(connection)}
+    if connection.type == AppConnectionType.TELEGRAM:
+        bootstrap = await connection_service.bootstrap_telegram_connection(db, connection)
+        result["bootstrap"] = bootstrap
+    return result
 
 @router.delete("/{connection_id}")
 async def delete_connection(connection_id: int, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    result = await db.execute(select(AppConnection).where(AppConnection.id == connection_id, AppConnection.organization_id == current_org.id))
-    connection = result.scalars().first()
-    if not connection:
-        raise HTTPException(status_code=404, detail="Connection not found")
-        
-    await db.delete(connection)
-    await db.commit()
-    return {"message": "Connection deleted"}
+    from backend.services.connection_service import connection_service
+    return await connection_service.delete_connection(db, connection_id, current_org.id)

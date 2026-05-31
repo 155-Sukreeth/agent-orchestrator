@@ -31,45 +31,13 @@ class RegisterRequest(BaseModel):
 
 @router.post("/login", response_model=TokenResponse)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == form_data.username))
-    user = result.scalars().first()
-    
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-        
-    access_token = create_access_token(data={"sub": str(user.id)})
-    return {"access_token": access_token, "token_type": "bearer", "user": user}
+    from backend.services.auth_service import auth_service
+    return await auth_service.login(db, form_data.username, form_data.password)
 
 @router.post("/register", response_model=TokenResponse)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    # Check if user exists
-    result = await db.execute(select(User).where(User.email == req.email))
-    if result.scalars().first():
-        raise HTTPException(status_code=400, detail="Email already registered")
-        
-    # Create Organization
-    org = Organization(name=req.organization_name)
-    db.add(org)
-    await db.commit()
-    await db.refresh(org)
-    
-    # Create User
-    hashed_pwd = hash_password(req.password)
-    new_user = User(
-        email=req.email,
-        hashed_password=hashed_pwd,
-        organization_id=org.id
-    )
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-    
-    access_token = create_access_token(data={"sub": str(new_user.id)})
-    return {"access_token": access_token, "token_type": "bearer", "user": new_user}
+    from backend.services.auth_service import auth_service
+    return await auth_service.register(db, req.email, req.password, req.organization_name)
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):

@@ -7,9 +7,11 @@ router = APIRouter(tags=["compiler"])
 @router.post("/compile_and_run")
 async def compile_and_run(req: CompileRunRequest, background_tasks: BackgroundTasks):
     background_tasks.add_task(
-        compiler_service.execute_graph_and_log, 
-        req.run_id, 
-        req.workflow_config, 
-        req.input_data
+        compiler_service.execute_graph_and_log,
+        req.run_id,
+        req.workflow_config,
+        req.user_message,
+        req.context,
+        req.trigger_meta,
     )
     return {"status": "started", "run_id": req.run_id}

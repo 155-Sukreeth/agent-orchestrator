@@ -20,10 +20,46 @@ class WorkflowUpdate(BaseModel):
     graph_definition: Optional[Dict[str, Any]] = None
     channels: Optional[List[str]] = None
     is_active: Optional[bool] = None
+    triggers: Optional[List['WorkflowTriggerUpdate']] = None
+
+import uuid
+
+class WorkflowTriggerBase(BaseModel):
+    type: str
+    enabled: bool = True
+    config: Dict[str, Any] = {}
+
+class WorkflowTriggerCreate(WorkflowTriggerBase):
+    pass
+
+class WorkflowTriggerUpdate(BaseModel):
+    id: Optional[uuid.UUID] = None
+    type: Optional[str] = None
+    enabled: Optional[bool] = None
+    config: Optional[Dict[str, Any]] = None
+
+class WorkflowTriggerResponse(WorkflowTriggerBase):
+    id: uuid.UUID
+    workflow_id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 class WorkflowResponse(WorkflowBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    triggers: List[WorkflowTriggerResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+class DefaultWorkflowTemplateResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    graph_definition: Dict[str, Any]
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+

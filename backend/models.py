@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, Boolean, JSON, DateTime, Float, 
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 from backend.database import Base
 from backend.config.settings import settings
 from cryptography.fernet import Fernet
@@ -119,20 +121,48 @@ class Workflow(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     runs = relationship("Run", back_populates="workflow")
+    triggers = relationship("WorkflowTrigger", back_populates="workflow", cascade="all, delete-orphan")
+
+class DefaultWorkflowTemplate(Base):
+    __tablename__ = "default_workflow_templates"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    description = Column(String)
+    graph_definition = Column(JSON, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class WorkflowTrigger(Base):
+    __tablename__ = "workflow_triggers"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workflow_id = Column(Integer, ForeignKey("workflows.id", ondelete="CASCADE"), nullable=False)
+    type = Column(String(50), nullable=False, index=True) # "semantic"|"webhook"|"scheduler"
+    enabled = Column(Boolean, default=True, index=True)
+    config = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    workflow = relationship("Workflow", back_populates="triggers")
 
 class Run(Base):
     __tablename__ = "runs"
     id = Column(Integer, primary_key=True, index=True)
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
     workflow_id = Column(Integer, ForeignKey("workflows.id"))
+    trigger_id = Column(UUID(as_uuid=True), ForeignKey("workflow_triggers.id", ondelete="SET NULL"), nullable=True)
+    run_type = Column(String(50), default="test", index=True) # test, webhook, scheduler, semantic
     sender_id = Column(String, index=True)
     thread_id = Column(String, index=True)
     input_text = Column(String)
     output_text = Column(String, nullable=True)
+    input_data = Column(JSON, nullable=True)
+    output_data = Column(JSON, nullable=True)
     token_usage = Column(Integer, default=0)
     cost_usd = Column(Float, default=0.0)
     status = Column(String, default="pending")  # pending, running, completed, failed
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     workflow = relationship("Workflow", back_populates="runs")
     logs = relationship("RunLog", back_populates="run")
@@ -147,6 +177,13 @@ class RunLog(Base):
     payload = Column(JSON)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     run = relationship("Run", back_populates="logs")
+
+    @property
+    def level(self): return self.event_type
+    @property
+    def message(self): return self.node_id
+    @property
+    def details(self): return self.payload
 
 class Message(Base):
     __tablename__ = "messages"
@@ -213,6 +250,15 @@ class AgentTool(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     integration = relationship("Integration", back_populates="tools")
+
+class DefaultTool(Base):
+    __tablename__ = "default_tools"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    description = Column(String)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 class KnowledgeChunk(Base):
     __tablename__ = "knowledge_chunks"
@@ -290,6 +336,11 @@ class TelegramConnectionModel(AppConnection):
     def bot_token(self): return self.credentials.get("bot_token")
     @bot_token.setter
     def bot_token(self, value): self.credentials["bot_token"] = value
+
+    @property
+    def default_chat_id(self): return self.credentials.get("default_chat_id")
+    @default_chat_id.setter
+    def default_chat_id(self, value): self.credentials["default_chat_id"] = value
 
 class JiraConnectionModel(AppConnection):
     __mapper_args__ = {"polymorphic_identity": AppConnectionType.JIRA}

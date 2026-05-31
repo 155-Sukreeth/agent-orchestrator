@@ -6,5 +6,6 @@ class AgentSettings(BaseSettings):
     AGENTS_BIFROST_API_KEY: str = os.getenv("AGENTS_BIFROST_API_KEY", "")
     AGENTS_DEFAULT_PROVIDER: str = os.getenv("AGENTS_DEFAULT_PROVIDER", "gemini")
     AGENTS_DEFAULT_MODEL: str = os.getenv("AGENTS_DEFAULT_MODEL", "gemini-3.1-flash-lite")
+    BACKEND_API_URL: str = os.getenv("BACKEND_API_URL", "http://backend:8000")
 
 agent_settings = AgentSettings()

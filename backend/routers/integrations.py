@@ -19,85 +19,45 @@ router = APIRouter()
 
 @router.get("/")
 async def get_integrations(db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    result = await db.execute(select(Integration).where(Integration.organization_id == current_org.id).order_by(Integration.created_at.desc()))
-    return result.scalars().all()
+    from backend.services.integration_service import integration_service
+    return await integration_service.get_integrations(db, current_org.id)
 
 @router.post("/")
 async def create_integration(integration_in: IntegrationCreate, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    db_integration = Integration(
-        organization_id=current_org.id,
-        name=integration_in.name,
-        type=integration_in.type,
-        category=integration_in.category,
-        config=integration_in.config,
-        status=IntegrationStatus.PENDING
-    )
-    db.add(db_integration)
-    await db.commit()
-    await db.refresh(db_integration)
-    return db_integration
+    from backend.services.integration_service import integration_service
+    return await integration_service.create_integration(db, integration_in, current_org.id)
 
-from backend.models import IntegrationType, AgentTool, DOCUMENT_INTEGRATION_TYPES
+from backend.models import IntegrationType, AgentTool, DefaultTool, DOCUMENT_INTEGRATION_TYPES
 
 @router.get("/active/tools")
 async def get_active_tools(db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    result = await db.execute(
-        select(AgentTool, Integration.name.label("integration_name"))
-        .join(Integration, AgentTool.integration_id == Integration.id)
-        .where(AgentTool.is_active == True, AgentTool.organization_id == current_org.id)
-    )
-    tools = []
-    for tool, integration_name in result.all():
-        tool_dict = {column.name: getattr(tool, column.name) for column in tool.__table__.columns}
-        tool_dict["integration_name"] = integration_name
-        tools.append(tool_dict)
-    return tools
+    from backend.services.integration_service import integration_service
+    return await integration_service.get_active_tools(db, current_org.id)
 
 @router.get("/active/documents")
 async def get_active_document_integrations(db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    result = await db.execute(
-        select(Integration)
-        .where(Integration.organization_id == current_org.id)
-        .where(Integration.is_active == True)
-        .where(Integration.status == IntegrationStatus.SYNCED)
-        .where(Integration.type.in_(DOCUMENT_INTEGRATION_TYPES))
-    )
-    return result.scalars().all()
-
+    from backend.services.integration_service import integration_service
+    return await integration_service.get_active_document_integrations(db, current_org.id)
 
 @router.get("/{integration_id}/documents")
 async def get_integration_documents(integration_id: int, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    result = await db.execute(
-        select(KnowledgeDocument)
-        .where(KnowledgeDocument.integration_id == integration_id, KnowledgeDocument.organization_id == current_org.id)
-        .order_by(KnowledgeDocument.created_at.desc())
-    )
-    return result.scalars().all()
+    from backend.services.integration_service import integration_service
+    return await integration_service.get_documents(db, integration_id, current_org.id)
 
 @router.delete("/{integration_id}")
 async def delete_integration(integration_id: int, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    result = await db.execute(select(Integration).where(Integration.id == integration_id, Integration.organization_id == current_org.id))
-    integration = result.scalars().first()
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
-        
-    await db.delete(integration)
-    await db.commit()
-    
-    return {"status": "success", "message": f"Integration {integration_id} and all its data have been hard deleted."}
+    from backend.services.integration_service import integration_service
+    return await integration_service.delete_integration(db, integration_id, current_org.id)
 
 from backend.services.web_crawler_service import web_crawler_service
 from backend.services.file_processor_service import file_processor_service
 from backend.services.mcp_service import mcp_service
 from backend.services.api_tool_service import api_tool_service
-from backend.services.api_tool_service import api_tool_service
 
 @router.post("/{integration_id}/crawl")
 async def start_crawl(integration_id: int, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), redis = Depends(get_redis), current_org: Organization = Depends(get_current_org)):
-    result = await db.execute(select(Integration).where(Integration.id == integration_id, Integration.organization_id == current_org.id))
-    integration = result.scalars().first()
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
+    from backend.services.integration_service import integration_service
+    integration = await integration_service.get_integration(db, integration_id, current_org.id)
         
     if integration.type == IntegrationType.FILE_UPLOAD:
         background_tasks.add_task(file_processor_service.execute_file_processing, integration_id, integration.config, redis)
@@ -112,21 +72,13 @@ async def start_crawl(integration_id: int, background_tasks: BackgroundTasks, db
 
 @router.get("/{integration_id}/tools")
 async def get_integration_tools(integration_id: int, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    result = await db.execute(
-        select(AgentTool).where(AgentTool.integration_id == integration_id, AgentTool.organization_id == current_org.id)
-    )
-    tools = result.scalars().all()
-    return tools
+    from backend.services.integration_service import integration_service
+    return await integration_service.get_tools(db, integration_id, current_org.id)
 
 @router.put("/tools/{tool_id}/toggle")
 async def toggle_tool_active(tool_id: int, db: AsyncSession = Depends(get_db), current_org: Organization = Depends(get_current_org)):
-    result = await db.execute(select(AgentTool).where(AgentTool.id == tool_id, AgentTool.organization_id == current_org.id))
-    tool = result.scalars().first()
-    if not tool:
-        raise HTTPException(status_code=404, detail="Tool not found")
-    
-    tool.is_active = not tool.is_active
-    await db.commit()
+    from backend.services.integration_service import integration_service
+    tool = await integration_service.toggle_tool(db, tool_id, current_org.id)
     return {"status": "success", "is_active": tool.is_active}
 
 @router.get("/{integration_id}/stream")
