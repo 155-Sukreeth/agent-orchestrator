@@ -6,7 +6,10 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from typing import Any
+
+from langchain_core.messages.utils import convert_to_openai_messages
 
 from agents.tools.registry import get_tool
 
@@ -91,15 +94,30 @@ def build_tool_invoke_payload(
         )
         return {k: clean[k] for k in ("channel", "text") if k in clean}
 
-    if metadata.get("run_id") is not None:
-        clean["run_id"] = str(metadata["run_id"])
     return clean
 
 
-def _tool_call_id(tool_call: Any) -> str:
+def state_messages_to_openai(messages: list[Any]) -> list[dict[str, Any]]:
+    """Preserve tool_call_id and tool_calls when state holds LangChain message objects."""
+    if not messages:
+        return []
+    return convert_to_openai_messages(messages)
+
+
+def _tool_call_id(tool_call: Any, index: int = 0) -> str:
     if isinstance(tool_call, dict):
-        return tool_call.get("id") or ""
-    return getattr(tool_call, "id", "") or ""
+        call_id = (
+            tool_call.get("id")
+            or tool_call.get("tool_call_id")
+            or (tool_call.get("function") or {}).get("id")
+        )
+    else:
+        call_id = getattr(tool_call, "id", None) or getattr(tool_call, "tool_call_id", None)
+    if call_id:
+        return str(call_id)
+    generated = f"call_{uuid.uuid4().hex[:12]}"
+    logger.warning("Tool call at index %s missing id; generated %s", index, generated)
+    return generated
 
 
 def _tool_call_name(tool_call: Any) -> str:
@@ -129,8 +147,8 @@ async def execute_tool_calls(
     allowed = set(allowed_tool_names or [])
     results: list[dict[str, Any]] = []
 
-    for tc in tool_calls:
-        call_id = _tool_call_id(tc)
+    for idx, tc in enumerate(tool_calls):
+        call_id = _tool_call_id(tc, idx)
         name = _tool_call_name(tc)
 
         if allowed and name not in allowed:
@@ -177,5 +195,11 @@ def assistant_message_from_response(msg_obj: Any) -> dict[str, Any]:
         "content": msg_obj.content or "",
     }
     if getattr(msg_obj, "tool_calls", None):
-        msg_dict["tool_calls"] = [tc.model_dump() for tc in msg_obj.tool_calls]
+        normalized: list[dict[str, Any]] = []
+        for idx, tc in enumerate(msg_obj.tool_calls):
+            dumped = tc.model_dump()
+            if not dumped.get("id"):
+                dumped["id"] = _tool_call_id(dumped, idx)
+            normalized.append(dumped)
+        msg_dict["tool_calls"] = normalized
     return msg_dict

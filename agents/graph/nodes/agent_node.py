@@ -7,6 +7,7 @@ from agents.graph.tool_executor import (
     assistant_message_from_response,
     build_openai_tools,
     execute_tool_calls,
+    state_messages_to_openai,
 )
 
 logger = logging.getLogger(__name__)
@@ -19,12 +20,9 @@ def build_messages(state: AgentState, system_prompt: str) -> list[dict]:
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
 
-    for msg in state.get("messages", []):
-        if hasattr(msg, "type"):
-            role = "assistant" if msg.type == "ai" else ("user" if msg.type == "human" else msg.type)
-            messages.append({"role": role, "content": getattr(msg, "content", "")})
-        elif isinstance(msg, dict):
-            messages.append(msg)
+    prior = state.get("messages", [])
+    if prior:
+        messages.extend(state_messages_to_openai(prior))
 
     return messages
 
