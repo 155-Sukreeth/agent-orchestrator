@@ -34,14 +34,17 @@ class NotificationService:
             raise ValueError(f"No active connection found for channel {request.channel} in this organization")
 
         # 4. Resolve recipient in priority order:
-        #    a) Explicit override in the request
+        #    a) Explicit override in the request (must be a numeric chat id)
         #    b) Inbound-reply: use the sender that triggered this run
         #    c) Outbound/proactive: use the default_chat_id configured on the connection
-        recipient_id = (
-            request.recipient_id
-            or run.sender_id
-            or (connection.credentials or {}).get("default_chat_id")
-        )
+        def _clean(recipient: str | None) -> str | None:
+            # Telegram chat ids are integers (may be large), reject obvious placeholders
+            if recipient and not recipient.isdigit():
+                return None
+            return recipient
+
+        recipient_id = _clean(request.recipient_id) or run.sender_id or (connection.credentials or {}).get("default_chat_id")
+
         thread_id = request.thread_id or run.thread_id or recipient_id
 
         if not recipient_id:
